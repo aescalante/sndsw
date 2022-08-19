@@ -9,7 +9,7 @@ detectorList = []
 def configure(run,ship_geo,Gfield=''):
 # -----Create media-------------------------------------------------
  if hasattr(run,'SetMaterials'):  run.SetMaterials("media.geo")  # Materials
- 
+
 # -----Create geometry----------------------------------------------
  cave= ROOT.ShipCave("CAVE")
  cave.SetGeometryFileName("caveWithAir.geo")
@@ -20,7 +20,7 @@ def configure(run,ship_geo,Gfield=''):
     parValue = eval('ship_geo.Floor.'+parName)
     floor.SetConfPar("Floor/"+parName, parValue)
  detectorList.append(floor)
- 
+
  EmulsionDet = ROOT.EmulsionDet("EmulsionDet",ROOT.kTRUE)
  for parName in ship_geo.EmulsionDet:
     parValue = eval('ship_geo.EmulsionDet.'+parName)
@@ -39,12 +39,19 @@ def configure(run,ship_geo,Gfield=''):
     MuFilter.SetConfPar("MuFilter/"+parName, parValue)
  detectorList.append(MuFilter)
 
- detElements = {}
- if hasattr(run,'SetMaterials'):  
-  for x in detectorList:
-    run.AddModule(x)
+Magnet = ROOT.MuFilter("Magnet",ROOT.kTRUE)
+for parName in ship_geo.MuFilter:
+    parValue = eval('ship_geo.Magnet.'+parName)
+    MuFilter.SetConfPar("Magnet/"+parName, parValue)
+detectorList.append(Magnet)
+
+detElements = {}
+if hasattr(run,'SetMaterials'):
+    for x in detectorList:
+        run.AddModule(x)
 # return list of detector elements
-  for x in run.GetListOfModules(): detElements[x.GetName()]=x
- else:
-  for x in detectorList: detElements[x.GetName()]=x
- return detElements
+for x in run.GetListOfModules():
+    detElements[x.GetName()]=x
+else:
+    for x in detectorList: detElements[x.GetName()]=x
+return detElements
