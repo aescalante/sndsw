@@ -60,12 +60,12 @@ elif options.AdvSND:
     #at the moment $SNDSW_ROOT points to a compilation of master (where advSND_geom_config.py does not exist)
     #snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/AdvSND_geom_config.py") 
     tag = "AdvSND"
-    snd_geo = ConfigRegistry.loadpy("/afs/cern.ch/work/e/escalant/private/SND_LHC/sndsw/geometry/AdvSND_geom_config.py")
-elif options.AdvSND:
+    snd_geo = ConfigRegistry.loadpy("/afs/cern.ch/work/e/escalant/private/SND_LHC_escalant/sndsw/geometry/AdvSND_geom_config.py")
+elif options.myGeo:
     #at the moment $SNDSW_ROOT points to a compilation of master (where advSND_geom_config.py does not exist)
     #snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/AdvSND_geom_config.py") 
     tag = "myGeo"
-    snd_geo = ConfigRegistry.loadpy("/afs/cern.ch/work/e/escalant/private/SND_LHC/sndsw/geometry/myGeom_config.py")
+    snd_geo = ConfigRegistry.loadpy("/afs/cern.ch/work/e/escalant/private/SND_LHC_escalant/sndsw/geometry/myGeom_config.py")
 else:
     tag = "NominalSND"
     snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/sndLHC_geom_config.py")
