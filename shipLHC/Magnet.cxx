@@ -128,6 +128,11 @@ void Magnet::ConstructGeometry()
 
   // MAGNETIC FIELD
   Double_t fField = conf_floats["Magnet/Field"];
+
+  // Shifts
+  Double_t fShiftX     = conf_floats["Magnet/ShiftX"];
+  Double_t fShiftY     = conf_floats["Magnet/ShiftY"];
+  Double_t fShiftZ     = conf_floats["Magnet/ShiftZ"];
   
   TGeoVolume *top=gGeoManager->FindVolumeFast("Detector");
   if(!top)  LOG(ERROR) << "no Detector volume found " ;
@@ -184,7 +189,7 @@ void Magnet::ConstructGeometry()
   volMagRegion->SetField(magField);
   volMagnet->AddNode(volMagRegion, 0);
   
-  top->AddNode(volMagnet, 0);
+  top->AddNode(volMagnet, 0, new TGeoTranslation(fShiftX,fShiftY,fShiftZ));
 }
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)
