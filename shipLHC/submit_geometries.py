@@ -14,11 +14,11 @@ if __name__ == "__main__":
     geometry = []
     #geometry.append("--AdvSND") #configuration = "/afs/cern.ch/work/e/escalant/private/SND_LHC/sndsw/geometry/AdvSND_geom_config.py"
     #geometry.append("--testbeam")     #configuration = "$SNDSW_ROOT/geometry/sndLHC_H6geom_config.py"
-    geometry.append("--myGeo")     #configuration = "$SNDSW_ROOT/geometry/sndLHC_H6geom_config.py"
+    geometry.append("--myGeo")     #configuration = /afs/cern.ch/work/e/escalant/private/SND_LHC_escalant/sndsw/geometry/myGeom_config.py"
     #geometry.append("")         #configuration = "$SNDSW_ROOT/geometry/sndLHC_geom_config.py"
 
     for kgeometry in geometry:
         command = "python {SCRIPT} --verbose {GEOMETRY} --output {OUTDIR}".format(SCRIPT=script, GEOMETRY=kgeometry, OUTDIR=outDir)
         print(command)
         bash(command)
-        pdb.set_trace()
+        #pdb.set_trace()

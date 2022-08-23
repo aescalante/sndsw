@@ -305,134 +305,21 @@ with ConfigRegistry.register_config("basic") as c:
         c.Floor.MFeBlockY = c.MuFilter.FeY
         c.Floor.MFeBlockZ = c.MuFilter.FeZ
 
-
-        #Dummy magnet
+        # MagnetStructure
         c.Magnet = AttrDict(z=0*u.cm)
-        #coordinates in local gravity based system
-        c.Magnet.Veto1Dx, c.Magnet.Veto1Dy, c.Magnet.Veto1Dz = 40.8*u.mm, 2798.3*u.mm, 192.1*u.mm
-        c.Magnet.Veto2Dx, c.Magnet.Veto2Dy, c.Magnet.Veto2Dz = 40.6*u.mm, 2839.3*u.mm, 172.1*u.mm
-        c.Magnet.Iron1Dx, c.Magnet.Iron1Dy, c.Magnet.Iron1Dz = -22.1*u.mm, 3579.6*u.mm, 146.6*u.mm
-        # US1
-        c.Magnet.Muon1Dx, c.Magnet.Muon1Dy, c.Magnet.Muon1Dz = -46.6*u.mm, 3760.2*u.mm, 128.6 *u.mm
-        c.Magnet.Iron2Dx, c.Magnet.Iron2Dy, c.Magnet.Iron2Dz   = -22.1*u.mm, 3804.6*u.mm, 136.6*u.mm
-        # US2
-        c.Magnet.Muon2Dx, c.Magnet.Muon2Dy,c.Magnet.Muon2Dz = -45.7*u.mm, 3984.1*u.mm, 127.6 *u.mm
-        c.Magnet.Iron3Dx, c.Magnet.Iron3Dy,   c.Magnet.Iron3Dz    = -22.1*u.mm, 4029.6*u.mm, 126.6*u.mm
-        # US3
-        c.Magnet.Muon3Dx, c.Magnet.Muon3Dy,c.Magnet.Muon3Dz = -44.6*u.mm, 4209.5*u.mm, 128.0 *u.mm
-        c.Magnet.Iron4Dx, c.Magnet.Iron4Dy,   c.Magnet.Iron4Dz    = -22.1*u.mm, 4254.6*u.mm, 116.7*u.mm
-        # US4
-        c.Magnet.Muon4Dx, c.Magnet.Muon4Dy,c.Magnet.Muon4Dz = -45.1*u.mm, 4435.6*u.mm, 128.6 *u.mm
-        c.Magnet.Iron5Dx, c.Magnet.Iron5Dy,  c.Magnet.Iron5Dz    = -22.1*u.mm, 4479.6*u.mm, 127.7*u.mm
-        # US5
-        c.Magnet.Muon5Dx, c.Magnet.Muon5Dy,c.Magnet.Muon5Dz = -46.8*u.mm, 4663.0*u.mm, 129.9 *u.mm
-        c.Magnet.Iron6Dx, c.Magnet.Iron6Dy,  c.Magnet.Iron6Dz    = -22.1*u.mm, 4704.6*u.mm, 127.7*u.mm
-        # DS1
-        c.Magnet.Muon6Dx, c.Magnet.Muon6Dy,c.Magnet.Muon6Dz = -45.1*u.mm, 4889.6*u.mm - 1*u.mm, 129.8 *u.mm
-        c.Magnet.Iron7Dx, c.Magnet.Iron7Dy,  c.Magnet.Iron7Dz    = -22.1*u.mm, 4943.6*u.mm, 127.7*u.mm
-        # DS2
-        c.Magnet.Muon7Dx, c.Magnet.Muon7Dy,c.Magnet.Muon7Dz = -45.2*u.mm, 5125.9*u.mm, 132.8 *u.mm
-        c.Magnet.Iron8Dx, c.Magnet.Iron8Dy,  c.Magnet.Iron8Dz    = -22.1*u.mm, 5183.6*u.mm, 127.7*u.mm
-        # DS3
-        c.Magnet.Muon8Dx, c.Magnet.Muon8Dy,c.Magnet.Muon8Dz = -7.9*u.mm, 5396.7*u.mm,  132.5 *u.mm
-
-        c.Magnet.DS4ZGap = 8.82*u.cm
-        # DS4V
-        c.Magnet.Muon9Dx, c.Magnet.Muon9Dy, c.Magnet.Muon9Dz  =  c.Magnet.Muon8Dx,     c.Magnet.Muon8Dy + c.Magnet.DS4ZGap, c.Magnet.Muon8Dz
-        c.Magnet.Iron9Dx, c.Magnet.Iron9Dy, c.Magnet.Iron9Dz  = 177.9*u.mm, 5529.7*u.mm + 1*u.cm,  127.7*u.mm    # move downstream by 1cm to avoid overlap
-
-        # relation between edge and bottom bar for VETO
-        c.Magnet.VETOLocX, c.Magnet.VETOLocY,c.Magnet.VETOLocZ = 20.0*u.mm,20.0*u.mm,46.7*u.mm
-
-        # relation between edge and bottom bar for US and DS
-        c.Magnet.DSHLocX, c.Magnet.DSHLocY,c.Magnet.DSHLocZ      = 10.5*u.mm, 32.0*u.mm, 11.1*u.mm
-        # relation between edge and right bar
-        c.Magnet.DSVLocX, c.Magnet.DSVLocY,c.Magnet.DSVLocZ       = 623.0*u.mm, 47.0*u.mm, 641.3*u.mm
-
-        # offsets in Z of first US bar
-        c.Magnet.USOffZ1 = 4.35*u.mm
-        c.Magnet.USOffZ2 = 5.0*u.mm
-        c.Magnet.USOffZ3 = 4.2*u.mm
-        c.Magnet.USOffZ4 = 5.21*u.mm
-        c.Magnet.USOffZ5 = 4.74*u.mm
-
-        #Veto station parameters
-        c.Magnet.VetonSiPMs = 8
-        c.Magnet.VetonSides  = 2
-        c.Magnet.NVetoPlanes = 2
-        c.Magnet.NVetoBars    = 7
-
-        c.Magnet.VetoBarX,c.Magnet.VetoBarY,c.Magnet.VetoBarZ = 42 *u.cm, 6 * u.cm, 1 * u.cm
-        c.Magnet.VetoBarGap = 2*30*u.um  # wrapping material
-
-        c.Magnet.FeX,c.Magnet.FeY,c.Magnet.FeZ                  = 80*u.cm, 60*u.cm, 20*u.cm
-        c.Magnet.FeEndX,c.Magnet.FeEndY,c.Magnet.FeEndZ = 40*u.cm, 40*u.cm, 20*u.cm
-        c.Magnet.FeBotX,c.Magnet.FeBotY,c.Magnet.FeBotZ   = 80*u.cm,   9*u.cm, 40*u.cm
-
-        c.Magnet.UpstreamDetZ = 2.6*u.cm
-        c.Magnet.UpstreamnSiPMs = 8
-        c.Magnet.UpstreamnSides = 2
-        c.Magnet.NUpstreamPlanes = 5
-        c.Magnet.DownstreamDetZ = 3.9*u.cm
-        c.Magnet.DownstreamnSiPMs = 1
-        c.Magnet.DownstreamnSides = 2   # only for horizontal, vertical only one side
-        c.Magnet.NDownstreamPlanes = 4
-        #upstream bars configuration
-        c.Magnet.NUpstreamBars = 10
-        c.Magnet.UpstreamBarX,c.Magnet.UpstreamBarY,c.Magnet.UpstreamBarZ = 82.525*u.cm, 6.0*u.cm, 1.0*u.cm
-        c.Magnet.UpstreamBarGap = 0.1*u.mm
-
-        #downstream bars configuration
-        c.Magnet.NDownstreamBars = 60 #n.d.r. both for x and y in this case
-        c.Magnet.DownstreamBarX,c.Magnet.DownstreamBarY,c.Magnet.DownstreamBarZ = 82.525*u.cm, 1*u.cm, 1*u.cm
-        c.Magnet.DownstreamBarGap = 0.1*u.mm
-        c.Magnet.DownstreamBarX_ver,c.Magnet.DownstreamBarY_ver,c.Magnet.DownstreamBarZ_ver = 1*u.cm, 63.525*u.cm, 1*u.cm
-
-        # DS and US support box, inner, Z pointing upward
-        c.Magnet.SupportBoxD  = 0.5*u.mm  # empty space between bars and box
-        c.Magnet.SupportBoxW = 2*u.mm
-        c.Magnet.DSBoxX1        = c.Magnet.DSHLocX - c.Magnet.SupportBoxD
-        c.Magnet.DSBoxX2        = c.Magnet.DSHLocX + c.Magnet.DownstreamBarX + c.Magnet.SupportBoxD
-        c.Magnet.DSBoxZ1        = c.Magnet.DSHLocZ - c.Magnet.DownstreamBarY/2 - c.Magnet.SupportBoxD
-        c.Magnet.DSBoxZ2        = c.Magnet.DSVLocZ + c.Magnet.SupportBoxD
-        c.Magnet.DSBoxY1        = c.Magnet.DSHLocY - c.Magnet.DownstreamBarZ/2 - c.Magnet.SupportBoxD
-        c.Magnet.DSBoxY2        = c.Magnet.DSVLocY + c.Magnet.DownstreamBarZ/2 + c.Magnet.SupportBoxD
-
-        c.Magnet.USBoxY1        = c.Magnet.DSHLocY - c.Magnet.DownstreamBarZ/2 - c.Magnet.SupportBoxD
-        c.Magnet.USBoxY2        = c.Magnet.DSHLocY + c.Magnet.DownstreamBarZ/2 + c.Magnet.SupportBoxD
-
-       # VETO support box
-        c.Magnet.SupportBoxVW = 4*u.mm
-        c.Magnet.VETOBoxX1        = c.Magnet.VETOLocX - c.Magnet.SupportBoxD
-        c.Magnet.VETOBoxX2        = c.Magnet.VETOLocX + c.Magnet.VetoBarX + c.Magnet.SupportBoxD
-        c.Magnet.VETOBoxZ1        = c.Magnet.VETOLocZ - c.Magnet.VetoBarY/2 - c.Magnet.SupportBoxD
-        c.Magnet.VETOBoxZ2        = c.Magnet.VETOLocZ + (c.Magnet.NVetoBars-1)*(c.Magnet.VetoBarY+c.Magnet.VetoBarGap) + c.Magnet.VetoBarY/2 + c.Magnet.SupportBoxD
-        c.Magnet.VETOBoxY1        = c.Magnet.VETOLocY - c.Magnet.VetoBarZ/2 - c.Magnet.SupportBoxD
-        c.Magnet.VETOBoxY2        = c.Magnet.VETOLocY + c.Magnet.VetoBarZ/2 + c.Magnet.SupportBoxD
-
-       # VETO/US/DS plane alignment
-        c.Magnet.Veto1ShiftY = 0 * u.cm
-        c.Magnet.Veto2ShiftY = 0 * u.cm
-        c.Magnet.US1ShiftY =   0 * u.cm
-        c.Magnet.US2ShiftY =   0 * u.cm
-        c.Magnet.US3ShiftY =   0 * u.cm
-        c.Magnet.US4ShiftY =   0 * u.cm
-        c.Magnet.US5ShiftY =   0 * u.cm
-        c.Magnet.DS1ShiftY =   0 * u.cm
-        c.Magnet.DS1ShiftX =   0 * u.cm
-        c.Magnet.DS2ShiftY =   0 * u.cm
-        c.Magnet.DS2ShiftX =   0 * u.cm
-        c.Magnet.DS3ShiftY =   0 * u.cm
-        c.Magnet.DS3ShiftX =   0 * u.cm
-        c.Magnet.DS4ShiftX =   0 * u.cm
-
-       #digitization parameters
-        c.Magnet.DsAttenuationLength   =  350 * u.cm                #  values between 300 cm and 400cm observed for H6 testbeam
-        c.Magnet.DsTAttenuationLength =  700 * u.cm                # top readout with mirror on bottom
-        c.Magnet.VandUpAttenuationLength = 999 * u.cm        # no significante attenuation observed for H6 testbeam
-        c.Magnet.VandUpSiPMcalibrationL    = 25.*1000.       # 1.65 MeV = 41 qcd
-        c.Magnet.VandUpSiPMcalibrationS    = 25.*1000.
-        c.Magnet.DsSiPMcalibration             = 25.*1000.
-        c.Magnet.timeResol = 150.*u.picosecond
-        c.Magnet.VandUpPropSpeed    = 12.5*u.cm/u.nanosecond
-        c.Magnet.DsPropSpeed        = 14.3*u.cm/u.nanosecond
+        c.Magnet.InMagX   =  120 * u.cm
+        c.Magnet.InMagY   =  60 * u.cm
+        c.Magnet.IronYokeX = 30 * u.cm
+        c.Magnet.IronYokeY = 25 * u.cm
+        c.Magnet.CoilX = c.Magnet.InMagY
+        c.Magnet.CoilY = 23 * u.cm
+        c.Magnet.OutMagX = c.Magnet.InMagX + 2*c.Magnet.IronYokeX
+        c.Magnet.OutMagY = c.Magnet.InMagX + 2*(c.Magnet.CoilY+c.Magnet.IronYokeY)
+        c.Magnet.MagZ = 200 * u.cm
+        c.Magnet.Mother = 1000 * u.cm
+        c.Magnet.Field = 1 #tesla
+        
+        # Magnet Tracking stations
+        c.Magnet.TrackerZ = 0.5 * u.cm
+        c.Magnet.TSpacingZ = 2 * u.cm
+        c.Magnet.LevArm = 100 * u.cm

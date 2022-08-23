@@ -66,14 +66,20 @@ elif options.myGeo:
     #snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/AdvSND_geom_config.py") 
     tag = "myGeo"
     snd_geo = ConfigRegistry.loadpy("/afs/cern.ch/work/e/escalant/private/SND_LHC_escalant/sndsw/geometry/myGeom_config.py")
+    #print("removing detectors")
+    #del snd_geo['EmulsionDet']
+    #del snd_geo['MuFilter']
+    #del snd_geo['Scifi']
+    #del snd_geo['Magnet']
 else:
     tag = "NominalSND"
     snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/sndLHC_geom_config.py")
 
+pdb.set_trace()
 if options.verbose:
     pp = pprint.PrettyPrinter(depth=2)
     pp.pprint(snd_geo)
-    pause("GEOMETRY LOADED", skip_pdb=True) 
+    pause("GEOMETRY LOADED")
 
 if not os.path.exists(options.outputDir):
   os.makedirs(options.outputDir)

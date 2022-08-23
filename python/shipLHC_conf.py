@@ -18,38 +18,39 @@ def configure(run,ship_geo,Gfield=''):
     cave.SetGeometryFileName("caveWithAir.geo")
     detectorList.append(cave)
 
-    floor = ROOT.Floor()
-    for parName in ship_geo.Floor:
-        parValue = eval('ship_geo.Floor.'+parName)
-        floor.SetConfPar("Floor/"+parName, parValue)
-    detectorList.append(floor)
+    if "Floor" in ship_geo:
+        floor = ROOT.Floor()
+        for parName in ship_geo.Floor:
+            parValue = eval('ship_geo.Floor.'+parName)
+            floor.SetConfPar("Floor/"+parName, parValue)
+        detectorList.append(floor)
 
-    EmulsionDet = ROOT.EmulsionDet("EmulsionDet",ROOT.kTRUE)
-    for parName in ship_geo.EmulsionDet:
-        parValue = eval('ship_geo.EmulsionDet.'+parName)
-        EmulsionDet.SetConfPar("EmulsionDet/"+parName, parValue)
-    detectorList.append(EmulsionDet)
+    if "EmulsionDet" in ship_geo:
+        EmulsionDet = ROOT.EmulsionDet("EmulsionDet",ROOT.kTRUE)
+        for parName in ship_geo.EmulsionDet:
+            parValue = eval('ship_geo.EmulsionDet.'+parName)
+            EmulsionDet.SetConfPar("EmulsionDet/"+parName, parValue)
+        detectorList.append(EmulsionDet)
 
-    Scifi = ROOT.Scifi("Scifi", ROOT.kTRUE)
-    for parName in ship_geo.Scifi:
-        parValue = eval('ship_geo.Scifi.'+parName)
-        Scifi.SetConfPar("Scifi/"+parName, parValue)
-    detectorList.append(Scifi)
+    if "Scifi" in ship_geo:
+        Scifi = ROOT.Scifi("Scifi", ROOT.kTRUE)
+        for parName in ship_geo.Scifi:
+            parValue = eval('ship_geo.Scifi.'+parName)
+            Scifi.SetConfPar("Scifi/"+parName, parValue)
+        detectorList.append(Scifi)
+    
+    if "MuFilter" in ship_geo:
+        MuFilter = ROOT.MuFilter("MuFilter",ROOT.kTRUE)
+        for parName in ship_geo.MuFilter:
+            parValue = eval('ship_geo.MuFilter.'+parName)
+            MuFilter.SetConfPar("MuFilter/"+parName, parValue)
+        detectorList.append(MuFilter)
 
-    pdb.set_trace()
-    MuFilter = ROOT.MuFilter("MuFilter",ROOT.kTRUE)
-    for parName in ship_geo.MuFilter:
-        parValue = eval('ship_geo.MuFilter.'+parName)
-        MuFilter.SetConfPar("MuFilter/"+parName, parValue)
-    detectorList.append(MuFilter)
-
-    if "Magnet" in ship_geo: #Magnet is defined in geometry (only available in advSND geometry files)
-        pdb.set_trace()
-        Magnet = ROOT.MuFilter("MuFilter",ROOT.kTRUE)
+    if "Magnet" in ship_geo: #Magnet is only available in advSND geometry files
+        Magnet = ROOT.Magnet("Magnet",ROOT.kTRUE)
         for parName in ship_geo.Magnet:
             parValue = eval('ship_geo.Magnet.'+parName)
             Magnet.SetConfPar("Magnet/"+parName, parValue)
-        pdb.set_trace()
         detectorList.append(Magnet)
 
     print(detectorList)

@@ -29,9 +29,9 @@ class Magnet : public FairDetector
 		/** Create the detector geometry **/
 		void ConstructGeometry();
 
-    /** Getposition **/
-    void GetPosition(Int_t id, TVector3& vLeft, TVector3& vRight); // or top and bottom
-    void GetLocalPosition(Int_t id, TVector3& vLeft, TVector3& vRight);
+		/** Getposition **/
+		void GetPosition(Int_t id, TVector3& vLeft, TVector3& vRight); // or top and bottom
+		void GetLocalPosition(Int_t id, TVector3& vLeft, TVector3& vRight);
 
 		void SetConfPar(TString name, Float_t value){conf_floats[name]=value;}
 		void SetConfPar(TString name, Int_t value){conf_ints[name]=value;}
@@ -72,23 +72,23 @@ class Magnet : public FairDetector
 
 	private:
 
-			/** Track information to be stored until the track leaves the active volume. */
-			Int_t          fTrackID;           //!  track index
-			Int_t          fVolumeID;          //!  volume id
-			TLorentzVector fPos;               //!  position at entrance
-			TLorentzVector fMom;               //!  momentum at entrance
-			Double32_t     fTime;              //!  time
-			Double32_t     fLength;            //!  length
-			Double32_t     fELoss;             //!  energy loss
-
-			/** configuration parameters **/
-			std::map<TString,Float_t> conf_floats;
-			std::map<TString,Int_t> conf_ints;
-			std::map<TString,TString> conf_strings;
+		/** Track information to be stored until the track leaves the active volume. */
+		Int_t          fTrackID;           //!  track index
+		Int_t          fVolumeID;          //!  volume id
+		TLorentzVector fPos;               //!  position at entrance
+		TLorentzVector fMom;               //!  momentum at entrance
+		Double32_t     fTime;              //!  time
+		Double32_t     fLength;            //!  length
+		Double32_t     fELoss;             //!  energy loss
+		
+		/** configuration parameters **/
+		std::map<TString,Float_t> conf_floats;
+		std::map<TString,Int_t> conf_ints;
+		std::map<TString,TString> conf_strings;
 
 	protected:
 
-			Int_t InitMedium(const char* name);
+		Int_t InitMedium(const char* name);
 };
 
 #endif

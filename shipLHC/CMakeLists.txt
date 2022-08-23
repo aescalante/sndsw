@@ -35,7 +35,7 @@ MuFilterPoint.cxx
 MuFilterHit.cxx
 sndScifiHit.cxx
 sndCluster.cxx
-#Magnet.cxx
+Magnet.cxx
 SNDLHCEventHeader.cxx
 )
 
