@@ -132,6 +132,9 @@ void Magnet::ConstructGeometry()
   TGeoVolume *top=gGeoManager->FindVolumeFast("Detector");
   if(!top)  LOG(ERROR) << "no Detector volume found " ;
 
+  //Definition of the box containing volFeYoke + volCoil + volMagRegion + volTrackPlanes
+  TGeoVolumeAssembly *volMagnet = new TGeoVolumeAssembly("volMagnet");
+
   //Materials  (placeholder, TODO)
   InitMedium("iron");
   TGeoMedium *Fe =gGeoManager->GetMedium("iron");
@@ -161,9 +164,9 @@ void Magnet::ConstructGeometry()
   volCoil->SetLineColor(kOrange+1);
 
   // Positioning
-  top->AddNode(volFeYoke, 0);
-  top->AddNode(volCoil, 0, new TGeoTranslation(0, (fInMagY+fCoilY)/2., 0));
-  top->AddNode(volCoil, 1, new TGeoTranslation(0, -(fInMagY+fCoilY)/2., 0));
+  volMagnet->AddNode(volFeYoke, 0);
+  volMagnet->AddNode(volCoil, 0, new TGeoTranslation(0, (fInMagY+fCoilY)/2., 0));
+  volMagnet->AddNode(volCoil, 1, new TGeoTranslation(0, -(fInMagY+fCoilY)/2., 0));
   
   TGeoBBox *TrackPlane = new TGeoBBox("TrackPlane", fInMagX/2., fInMagY/2., fTrackerZ/2.);
 
@@ -171,15 +174,17 @@ void Magnet::ConstructGeometry()
   volTrackPlane->SetLineColor(kBlue);
   volTrackPlane->SetTransparency(60);
 
-  top->AddNode(volTrackPlane, 0, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ/2.));
-  top->AddNode(volTrackPlane, 1, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ/2.));
-  top->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
-  top->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 0, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 1, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
 
   TGeoUniformMagField *magField = new TGeoUniformMagField(-fField,0, 0);
   TGeoVolume *volMagRegion = new TGeoVolume("volMagRegion", MagRegion, air); //placeholder material
   volMagRegion->SetField(magField);
-  top->AddNode(volMagRegion, 0);
+  volMagnet->AddNode(volMagRegion, 0);
+  
+  top->AddNode(volMagnet, 0);
 }
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)
