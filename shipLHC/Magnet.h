@@ -86,7 +86,7 @@ private:
     std::map<TString,Int_t> conf_ints;
     std::map<TString,TString> conf_strings;
 
-    ClassDef(Magnet,2) // why 2 ?
+    ClassDef(Magnet,1) // why 2 ?
 
 protected:
     
