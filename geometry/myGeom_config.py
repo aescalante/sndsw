@@ -323,3 +323,8 @@ with ConfigRegistry.register_config("basic") as c:
         c.Magnet.TrackerZ = 0.5 * u.cm
         c.Magnet.TSpacingZ = 2 * u.cm
         c.Magnet.LevArm = 100 * u.cm
+
+        #shift around the magnetd (numbers tuned by hand)
+        c.Magnet.ShiftX = -42 * u.cm
+        c.Magnet.ShiftY = 42 * u.cm
+        c.Magnet.ShiftZ = 780 * u.cm
