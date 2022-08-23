@@ -4,12 +4,9 @@
 import ROOT,os
 import shipunit as u
 from ShipGeoConfig import ConfigRegistry
-import pdb
 detectorList = []
 
 def configure(run,ship_geo,Gfield=''):
-    print(ship_geo)
-    pdb.set_trace()
 # -----Create media-------------------------------------------------
     if hasattr(run,'SetMaterials'):  run.SetMaterials("media.geo")  # Materials
 
