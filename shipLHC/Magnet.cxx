@@ -106,6 +106,8 @@ Int_t Magnet::InitMedium(const char* name)
 
 void Magnet::ConstructGeometry()
 {
+  
+  //Geometry implementation from Daniele Centanni
 
   // MAGNET STRUCTURE
   Double_t fInMagX = conf_floats["Magnet/InMagX"];
@@ -130,15 +132,13 @@ void Magnet::ConstructGeometry()
   TGeoVolume *top=gGeoManager->FindVolumeFast("Detector");
   if(!top)  LOG(ERROR) << "no Detector volume found " ;
 
-  //Materials 
-  // InitMedium("iron");
-  // TGeoMedium *Fe =gGeoManager->GetMedium("iron");
-  // InitMedium("aluminium");
-  // TGeoMedium *Al =gGeoManager->GetMedium("aluminium");
-  // InitMedium("polyvinyltoluene");
-  // TGeoMedium *Scint =gGeoManager->GetMedium("polyvinyltoluene");
-  // InitMedium("Concrete");
-  // TGeoMedium *concrete = gGeoManager->GetMedium("Concrete");
+  //Materials  (placeholder, TODO)
+  InitMedium("iron");
+  TGeoMedium *Fe =gGeoManager->GetMedium("iron");
+  InitMedium("copper");
+  TGeoMedium *Cu =gGeoManager->GetMedium("copper");
+  InitMedium("air");
+  TGeoMedium *air =gGeoManager->GetMedium("air");
 
   // Shapes creation
   TGeoBBox *MagRegion = new TGeoBBox("MagRegion", fInMagX/2., fInMagY/2., fMagZ/2.+0.5);
@@ -147,16 +147,17 @@ void Magnet::ConstructGeometry()
 
   TGeoTranslation *CoilUpPos = new TGeoTranslation("CoilUpPos", 0, (fInMagY+fCoilY)/2.-0.001, 0);
   TGeoTranslation *CoilDownPos = new TGeoTranslation("CoilDownPos", 0, -(fInMagY+fCoilY)/2.+0.001, 0);
+  CoilUpPos->RegisterYourself();
+  CoilDownPos->RegisterYourself();
 
   // Yoke shape
   TGeoCompositeShape *FeYoke = new TGeoCompositeShape("FeYoke", "CoilContainer-MagRegion-(Coil:CoilUpPos)-(Coil:CoilDownPos)");
-  //FeYoke->Draw("ogl");
 
   // Volumes
-  TGeoVolume *volFeYoke = new TGeoVolume("volFeYoke", FeYoke, 0);
+  TGeoVolume *volFeYoke = new TGeoVolume("volFeYoke", FeYoke, Fe); //placeholder material
   volFeYoke->SetLineColor(kGray);
 
-  TGeoVolume *volCoil = new TGeoVolume("volCoil", Coil, 0);
+  TGeoVolume *volCoil = new TGeoVolume("volCoil", Coil, Cu); //placeholder material
   volCoil->SetLineColor(kOrange+1);
 
   // Positioning
@@ -166,12 +167,17 @@ void Magnet::ConstructGeometry()
   
   TGeoBBox *TrackPlane = new TGeoBBox("TrackPlane", fInMagX/2., fInMagY/2., fTrackerZ/2.);
 
-  TGeoVolume *volTrackPlane = new TGeoVolume("volTrackPlane", TrackPlane, 0);
+  TGeoVolume *volTrackPlane = new TGeoVolume("volTrackPlane", TrackPlane, Cu); //placeholder material
   volTrackPlane->SetLineColor(kBlue);
   volTrackPlane->SetTransparency(60);
 
+  top->AddNode(volTrackPlane, 0, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ/2.));
+  top->AddNode(volTrackPlane, 1, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ/2.));
+  top->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
+  top->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
+
   TGeoUniformMagField *magField = new TGeoUniformMagField(-fField,0, 0);
-  TGeoVolume *volMagRegion = new TGeoVolume("volMagRegion", MagRegion, 0);
+  TGeoVolume *volMagRegion = new TGeoVolume("volMagRegion", MagRegion, air); //placeholder material
   volMagRegion->SetField(magField);
   top->AddNode(volMagRegion, 0);
 }
