@@ -90,6 +90,7 @@ parser.add_argument("-b", "--heartBeat", dest="heartBeat", help="heart beat", de
 parser.add_argument("-c", "--command", dest="command", help="command", default="")
 parser.add_argument("-n", "--nEvents", dest="nEvents", help="number of events", default=-1,type=int)
 parser.add_argument("-t", "--trackType", dest="trackType", help="DS or Scifi", default="DS")
+parser.add_argument("--remakeScifiClusters", dest="remakeScifiClusters", help="remake ScifiClusters", default=False)
 options = parser.parse_args()
 
 runNr   = str(options.runNumber).zfill(6)
@@ -310,13 +311,14 @@ else:
               f=ROOT.TFile.Open(options.fname)
               if f.Get('rawConv'):   eventChain = f.rawConv
               else:                        eventChain = f.cbmsim
-eventChain.GetEvent(0)
-
+if options.remakeScifiClusters: eventChain.SetBranchStatus("Cluster_Scifi*",0)
+rc = eventChain.GetEvent(0)
 run      = ROOT.FairRunAna()
 ioman = ROOT.FairRootManager.Instance()
 ioman.SetTreeName(eventChain.GetName())
 outFile = ROOT.TMemFile('dummy','CREATE')
 source = ROOT.FairFileSource(eventChain.GetCurrentFile())
+
 if partitions>0:
     for p in range(1,partitions):
                        source.AddFile(path+'run_'+runNr+'/sndsw_raw-'+str(p).zfill(4)+'.root')
@@ -343,13 +345,10 @@ xrdb.getContainer("FairGeoParSet").setStatic()
 run.Init()
 if partitions>0:  eventTree = ioman.GetInChain()
 else:                 eventTree = ioman.GetInTree()
-# backward compatbility for early converted events
-eventTree.GetEvent(0)
-if eventTree.GetBranch('Digi_MuFilterHit'): eventTree.Digi_MuFilterHits = eventTree.Digi_MuFilterHit
 
-ioman = ROOT.FairRootManager.Instance()
 OT = ioman.GetSink().GetOutTree()
-
+Reco_MuonTracks = trackTask.fittedTracks
+Cluster_Scifi         = trackTask.clusScifi
 # wait for user action 
 
 def help():
@@ -1021,10 +1020,9 @@ def TimeStudy(Nev=options.nEvents,withDisplay=False):
 
 def beamSpot():
    trackTask.ExecuteTask()
-   T = ioman.GetObject("Reco_MuonTracks")
    Xbar = -10
    Ybar = -10
-   for  aTrack in T:
+   for  aTrack in Reco_MuonTracks:
          state = aTrack.getFittedState()
          pos    = state.getPos()
          rc = h['bs'].Fill(pos.x(),pos.y())
@@ -1061,8 +1059,6 @@ def beamSpot():
          slopeX= mom.Y()/mom.Z()
          h['slopes'].Fill(slopeX,slopeY)
          if not Ybar<0 and not Xbar<0 and abs(slopeY)<0.01: rc = h['bsDS'].Fill(Xbar,Ybar)
-
-         aTrack.Delete()
 
 def USshower(Nev=options.nEvents):
     zUS0 = zPos['MuFilter'][20] -  10
@@ -1147,6 +1143,62 @@ def USshower(Nev=options.nEvents):
         h['SvsL'+str(p)].Draw('colz')
     myPrint(h['CorLS'],'QCDsmallCSQCDlarge')
 
+def USDSEnergy(Nev=options.nEvents,nproc=15):
+#
+    ut.bookHist(h,'energy23','tot energy in DS vs US',                        300,0.,15000,250,0.,20000.)
+    ut.bookHist(h,'Tenergy23','tot energy in DS vs US eith scifi track',300,0.,15000,250,0.,20000.)
+#
+    if Nev < 0 : Nev = eventTree.GetEntries()
+    N=0
+    process = []
+    print('number of events',Nev)
+    for i in range(nproc):
+      try:
+           pid = os.fork()
+      except OSError:
+           print("Could not create a child process")
+      print('pid',pid,i)
+      if pid!=0:
+          process.append(pid)
+          # print('append process to list',process)
+      else:
+       dN = Nev//nproc
+       nstart = i*dN
+       nstop =  nstart + dN
+       if i==(nproc-1): nstop = Nev
+       print('start ',i,nstart,nstop)
+       for k in range(nstart,nstop):
+        event = eventTree
+        eventTree.GetEvent(k)
+        N+=1
+        if N>Nev: break
+        for aTrack in Reco_MuonTracks: aTrack.Delete()
+        Reco_MuonTracks.Clear()
+        rc = trackTask.ExecuteTask("Scifi")
+        Etot = {2:0,3:0}
+        for aHit in eventTree.Digi_MuFilterHits:
+           if not aHit.isValid(): continue
+           detID = aHit.GetDetectorID()
+           s = aHit.GetDetectorID()//10000
+           if s<2: continue
+           S = map2Dict(aHit,'SumOfSignals')
+           Etot[s]+=S['Sum']
+        rc = h['energy23'].Fill(Etot[2],Etot[3])
+        if Reco_MuonTracks.GetEntries()==1: rc = h['Tenergy23'].Fill(Etot[2],Etot[3])
+       ut.writeHists(h,'tmp_'+str(i))
+       exit(0)
+#
+    while process:
+          pid,exit_code = os.wait()
+          if pid == 0: time.sleep(100)
+          else: 
+                print('child process has finished',pid,exit_code)
+                process.remove(pid)
+    for i in range(nproc):
+      ut.readHists(h,'tmp_'+str(i))
+    print('i am finished')
+    return
+
 def Mufi_Efficiency(Nev=options.nEvents,optionTrack=options.trackType,withReco='True',NbinsRes=100,X=10.):
  
  projs = {1:'Y',0:'X'}
@@ -1219,20 +1271,22 @@ def Mufi_Efficiency(Nev=options.nEvents,optionTrack=options.trackType,withReco='
     N+=1
     if N>Nev: break
     if withReco:
+       for aTrack in Reco_MuonTracks: aTrack.Delete()
+       Reco_MuonTracks.Clear()
        if optionTrack=='DS': rc = trackTask.ExecuteTask("DS")
        else                         : rc = trackTask.ExecuteTask("Scifi")
-    if not OT.Reco_MuonTracks.GetEntries()==1: continue
-    theTrack = OT.Reco_MuonTracks[0]
+    if not Reco_MuonTracks.GetEntries()==1: continue
+    theTrack = Reco_MuonTracks[0]
     if not theTrack.getFitStatus().isFitConverged() and optionTrack!='DS':   # for H8 where only two planes / proj were avaiable
-                 continue
+           continue
 # only take horizontal tracks
     state = theTrack.getFittedState(0)
     pos   = state.getPos()
     mom = state.getMom()
     slopeX= mom.X()/mom.Z()
     slopeY= mom.Y()/mom.Z()
-    if abs(mom.x()/mom.z())>0.25: continue   # 4cm distance, 250mrad = 1cm
-    if abs(mom.y()/mom.z())>0.1: continue
+    if abs(slopeX)>0.25: continue   # 4cm distance, 250mrad = 1cm
+    if abs(slopeY)>0.1: continue
 
 # now extrapolate to US and check for hits.
     fitStatus = theTrack.getFitStatus()
@@ -1244,7 +1298,7 @@ def Mufi_Efficiency(Nev=options.nEvents,optionTrack=options.trackType,withReco='
     if hasattr(event,"Cluster_Scifi"):
                clusters = event.Cluster_Scifi
     else:
-               clusters = OT.Cluster_Scifi
+               clusters = Cluster_Scifi
 
     for aCluster in clusters:
         for nHit in range(event.Digi_ScifiHits.GetEntries()):
@@ -1258,7 +1312,6 @@ def Mufi_Efficiency(Nev=options.nEvents,optionTrack=options.trackType,withReco='
 
     if chi2Ndof> 9 and optionTrack!='DS': 
        rc = h['trackslxy_badChi2'].Fill(mom.x()/mom.Mag(),mom.y()/mom.Mag())
-       theTrack.Delete()
        continue
     rc = h['trackslxy'].Fill(mom.x()/mom.Mag(),mom.y()/mom.Mag())
 # get T0 from Track
@@ -1549,8 +1602,6 @@ def Mufi_Efficiency(Nev=options.nEvents,optionTrack=options.trackType,withReco='
                      elif not(i<nSiPMs) and nR>0:
                           key =  sdict[s]+str(s*10+plane)+'_'+str(bar)+'-c'+str(i-nSiPMs)
                           rc = h['sigmaQDCR_'+key].Fill((S[i]-meanR/nR) )
-
-    theTrack.Delete()
 
  for s in [1,2]:
     for l in range(systemAndPlanes[s]):
@@ -3112,7 +3163,7 @@ def scifi_beamSpot():
             w+=1
         rc = h['bs'].Fill(xMean/w,yMean/w)
 
-def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False):
+def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False,unbiased = True,minEnergy=False,remakeClusters=options.remakeScifiClusters,nproc=1):
     projs = {1:'V',0:'H'}
     for s in range(1,6):
      for o in range(2):
@@ -3127,53 +3178,114 @@ def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False)
     ut.bookHist(h,'trackChi2/ndof','track chi2/ndof vs ndof',100,0,100,20,0,20)
     ut.bookHist(h,'trackSlopes','track slope; x [mrad]; y [mrad]',1000,-100,100,1000,-100,100)
     parallelToZ = ROOT.TVector3(0., 0., 1.)
+    scifi = geo.modules['Scifi']
 
     if Nev < 0 : Nev = eventTree.GetEntries()
-    N=0
 # set alignment parameters
     if alignPar:
        for x in alignPar:
-             Scifi.SetConfPar(x,alignPar[x])
-    for event in eventTree:
-       N+=1
-       if N%100000==0: print('now at event ',N)
-       if N>Nev: break
+             if not x.find('Rot')>0: 
+                Scifi.SetConfPar(x,alignPar[x]*u.um)
+             else: 
+                Scifi.SetConfPar(x,alignPar[x]*u.mrad)
 
-       if not hasattr(event,"Cluster_Scifi"):
+    process = []
+    for iproc in range(nproc):
+      try:
+                if nproc>1: pid = os.fork()
+                else: pid = 0
+      except OSError:
+           print("Could not create a child process")
+      if pid!=0:
+          process.append(pid)
+      else:
+       dN = Nev//nproc
+       nstart = iproc*dN
+       nstop =  nstart + dN
+       if iproc==(nproc-1): nstop = Nev
+       for k in range(nstart,nstop):
+        event = eventTree
+        eventTree.GetEvent(k)
+        if minEnergy:
+          trackTypes = [0,0,0,0,0]
+          for aTrack in Reco_MuonTracks:
+            if aTrack.GetUniqueID()==1:
+              trackTypes[1]+=1
+              fstate =  aTrack.getFittedState()
+              mom = fstate.getMom()
+              if abs(mom.X()/mom.Z())<0.1: 
+            # check for muon hits
+                mult = {}
+                for i in range(30,40): mult[i]=0
+                for aHit in eventTree.Digi_MuFilterHits:
+                  if not aHit.isValid(): continue
+                  detID = aHit.GetDetectorID()
+                  s = detID//10000
+                  if s<3: continue
+                  l  = (detID%10000)//1000  # plane number
+                  bar = (detID%1000)
+                  if s>2:
+                     l=2*l
+                     if bar>59:
+                        bar=bar-60
+                        if l<6: l+=1
+                  mult[s*10+l]+=1
+                  if mult[35]==1 and mult[34]==1:  trackTypes[4]+=1  # from IP1 and high momentum
+
+            if aTrack.GetUniqueID()==3: trackTypes[3]+=1
+          if not (trackTypes[4]==1): continue
+
+# required to bypass memory leak for files with tracks
+        if event.GetBranch("Reco_MuonTracks"):
+            for aTrack in event.Reco_MuonTracks: aTrack.Delete()
+
+        if not hasattr(event,"Cluster_Scifi") or alignPar or remakeClusters:
+               if hasattr(trackTask,"clusScifi"): 
+                   trackTask.clusScifi.Clear()
                trackTask.scifiCluster()
-               clusters = OT.Cluster_Scifi
-       else:
+               clusters = trackTask.clusScifi
+        else:
                clusters = event.Cluster_Scifi
 
-       sortedClusters={}
-       for aCl in clusters:
+        sortedClusters={}
+        for aCl in clusters:
            so = aCl.GetFirst()//100000
            if not so in sortedClusters: sortedClusters[so]=[]
            sortedClusters[so].append(aCl)
+ 
 # select events with clusters in each plane
-       if len(sortedClusters)<10: continue
-
-       for s in range(1,6):
+        if len(sortedClusters)<10: continue
+        goodEvent = True
+        for s in sortedClusters:
+          if len(sortedClusters[s])>1: goodEvent=False
+        if not goodEvent: continue
+        validTrack = True
+        for s in range(1,6):
 # build trackCandidate
             hitlist = {}
-            k=0
-            for so in sortedClusters:
-                    if so//10 == s: continue
+            if unbiased or s==1:
+               k=0
+               for so in sortedClusters:
+                    if so//10 == s and unbiased: continue
                     for x in sortedClusters[so]:
                        hitlist[k] = x
                        k+=1
-            theTrack = trackTask.fitTrack(hitlist)
-            if not hasattr(theTrack,"getFittedState"): continue
+               theTrack = trackTask.fitTrack(hitlist)
+               if not hasattr(theTrack,"getFittedState"):
+                  validTrack = False
+                  continue
+               fitStatus = theTrack.getFitStatus()
+               if not fitStatus.isFitConverged() or theTrack.getNumPointsWithMeasurement()<8:
+                  theTrack.Delete()
+                  validTrack = False
+                  continue
+               rc = h['trackChi2/ndof'].Fill(fitStatus.getChi2()/(fitStatus.getNdf()+1E-10),fitStatus.getNdf() )
+               fstate =  theTrack.getFittedState()
+               mom = fstate.getMom()
+               rc = h['trackSlopes'].Fill(mom.X()/mom.Z()*1000,mom.Y()/mom.Z()*1000)
 # check residuals
-            fitStatus = theTrack.getFitStatus()
-            if not fitStatus.isFitConverged(): 
-                 theTrack.Delete()
-                 continue
-            rc = h['trackChi2/ndof'].Fill(fitStatus.getChi2()/(fitStatus.getNdf()+1E-10),fitStatus.getNdf() )
-            fstate =  theTrack.getFittedState()
-            mom = fstate.getMom()
-            rc = h['trackSlopes'].Fill(mom.X()/mom.Z()*1000,mom.Y()/mom.Z()*1000)
-# test plane 
+            if not validTrack and not unbiased: break
+# test plane
             for o in range(2):
                 testPlane = s*10+o
                 z = zPos['Scifi'][testPlane]
@@ -3188,6 +3300,9 @@ def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False)
                    if abs(z-Pos.z())<mZmin:
                       mZmin = abs(z-Pos.z())
                       mClose = m
+                if mZmin>10000:
+                    print("something wrong here with measurements",mClose,mZmin,theTrack.getNumPointsWithMeasurement())
+                    continue
                 fstate =  theTrack.getFittedState(mClose)
                 pos,mom = fstate.getPos(),fstate.getMom()
                 rep.setPosMom(state,pos,mom)
@@ -3198,36 +3313,33 @@ def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False)
                 rc = h['track_Scifi'+str(testPlane)].Fill(xEx,yEx)
                 for aCl in sortedClusters[testPlane]:
                    aCl.GetPosition(A,B)
-# apply rotation 
-                   nav.cd('/cave_1/Detector_0')
-                   gA = array('d',[A[0],A[1],A[2]])
-                   gB = array('d',[B[0],B[1],B[2]])
-                   lA =  array('d',[0,0,0])
-                   lB =  array('d',[0,0,0])
-                   nav.MasterToLocal(gA,lA)
-                   nav.MasterToLocal(gB,lB)
-                   xCl = (lA[0]+lB[0])/2.
-                   yCl = (lA[1]+lB[1])/2.
-                   zCl = (lA[2]+lB[2])/2.
-                   gpos =  array('d',[pos[0],pos[1],pos[2]])
-                   gmom =  array('d',[mom[0],mom[1],mom[2]])
-                   lpos =  array('d',[0,0,0])
-                   lmom =  array('d',[0,0,0])
-                   nav.MasterToLocal(gpos,lpos)
-                   nav.MasterToLocal(gmom,lmom)
-                   lam = (zCl-lpos[2])/lmom[2]
-                   lxEx = lpos[0]+lam*lmom[0]
-                   lyEx = lpos[1]+lam*lmom[1]
-                   if o==1 :   D = xCl - lxEx
-                   else:       D = yCl - lyEx
                    detID = aCl.GetFirst()
                    channel = detID%1000 + ((detID%10000)//1000)*128 + (detID%100000//10000)*512
-                   rc = h['res'+projs[o]+'_Scifi'+str(testPlane)].Fill(D/u.um)
-                   rc = h['resX'+projs[o]+'_Scifi'+str(testPlane)].Fill(D/u.um,lxEx)
-                   rc = h['resY'+projs[o]+'_Scifi'+str(testPlane)].Fill(D/u.um,lyEx)
-                   rc = h['resC'+projs[o]+'_Scifi'+str(testPlane)].Fill(D/u.um,channel)
+# calculate DOCA
+                   pq = A-pos
+                   uCrossv= (B-A).Cross(mom)
+                   doca = pq.Dot(uCrossv)/uCrossv.Mag()
+                   rc = h['resC'+projs[o]+'_Scifi'+str(testPlane)].Fill(doca/u.um,channel)
+                   rc = h['res'+projs[o]+'_Scifi'+str(testPlane)].Fill(doca/u.um)
+                   rc = h['resX'+projs[o]+'_Scifi'+str(testPlane)].Fill(doca/u.um,xEx)
+                   rc = h['resY'+projs[o]+'_Scifi'+str(testPlane)].Fill(doca/u.um,yEx)
 
-            theTrack.Delete()
+            if unbiased: theTrack.Delete()
+        if not unbiased and validTrack: theTrack.Delete()
+        
+       if nproc>1:
+         ut.writeHists(h,'tmp_'+str(iproc))
+         exit(0)
+         
+    if nproc>1:
+       while process:
+          pid,exit_code = os.wait()
+          if pid == 0: time.sleep(100)
+          else: 
+                process.remove(pid)
+       for i in range(nproc):
+           ut.readHists(h,'tmp_'+str(i))
+
 # analysis and plots 
     P = {'':'','X':'colz','Y':'colz','C':'colz'}
     Par = {'mean':1,'sigma':2}
@@ -3248,6 +3360,15 @@ def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False)
             if proj == '':
                 rc = h[hname].Fit('gaus','SQ')
                 fitResult = rc.Get()
+                tc.Update()
+                stats = h[hname].FindObject('stats')
+                stats.SetOptFit(1111111)
+                stats.SetX1NDC(0.76)
+                stats.SetY1NDC(0.30)
+                stats.SetX2NDC(0.98)
+                stats.SetY2NDC(0.92)
+                h[hname].Draw()
+                tc.Update()
                 for p in Par:
                    globalPos[p+projs[o]].SetPoint(s-1,s,fitResult.Parameter(Par[p]))
                    globalPos[p+projs[o]].SetPointError(s-1,0.5,fitResult.ParError(1))
@@ -3258,6 +3379,7 @@ def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False)
                      h[hname+str(m)] = h[hname].ProjectionX(hname+str(m),m*512,m*512+512)
                      rc = h[hname+str(m)].Fit('gaus','SQ0')
                      fitResult = rc.Get()
+                     if not fitResult: continue
                      for p in Par:
                         h['globalPosM'][p+projs[o]].SetPoint(j[o], s*10+m,   fitResult.Parameter(Par[p]))
                         h['globalPosM'][p+projs[o]].SetPointError(j[o],0.5,fitResult.ParError(1))
@@ -3267,34 +3389,38 @@ def Scifi_residuals(Nev=options.nEvents,NbinsRes=100,xmin=-2000.,alignPar=False)
 
     S  = ctypes.c_double()
     M = ctypes.c_double()
-    alignPar = {}
+    alignResult = {}
     for p in globalPos:
        ut.bookCanvas(h,p,p,750,750,1,1)
        tc = h[p].cd()
-       globalPos[p].SetTitle(p+';station; offset [#mum]')
+       if p.find('mean')<0: globalPos[p].SetTitle(p+';station; #sigma [#mum]')
+       else: globalPos[p].SetTitle(p+';station; offset [#mum]')
        globalPos[p].Draw("ALP")
        if p.find('mean')==0:
           for n in range(globalPos[p].GetN()):
              rc = globalPos[p].GetPoint(n,S,M)
-             print("station %i: offset %s =  %5.2F um"%(S.value,p[4:5],M.value))
+             E = globalPos[p].GetErrorY(n)
+             print("station %i: offset %s =  %5.2F um   sigma = %5.2F um"%(S.value,p[4:5],M.value,E))
              s = int(S.value*10)
              if p[4:5] == "V": s+=1
-             alignPar["Scifi/LocD"+str(s)] = M.value
+             alignResult["Scifi/LocD"+str(s)] = [M.value,E]
 
     for p in h['globalPosM']:
        ut.bookCanvas(h,p+'M',p,750,750,1,1)
        tc = h[p+'M'].cd()
-       h['globalPosM'][p].SetTitle(p+';mat ; offset [#mum]')
+       if p.find('mean')<0: h['globalPosM'][p].SetTitle(p+';mat ; #sigma  [#mum]')
+       else: h['globalPosM'][p].SetTitle(p+';mat ; offset [#mum]')
        h['globalPosM'][p].Draw("ALP")
        if p.find('mean')==0:
           for n in range(h['globalPosM'][p].GetN()):
              rc = h['globalPosM'][p].GetPoint(n,S,M)
-             print("station %i: offset %s =  %5.2F um"%(S.value,p[4:5],M.value))
+             E = h['globalPosM'][p].GetErrorY(n)
+             print("station %i: offset %s =  %5.2F um   sigma = %5.2F um"%(S.value,p[4:5],M.value,E))
              s = int(S.value*10)
              if p[4:5] == "V": s+=1
-             alignPar["Scifi/LocM"+str(s)] = M.value
+             alignResult["Scifi/LocM"+str(s)] = [M.value,E]
 
-    return alignPar
+    return alignResult
 
 def printScifi_residuals(tag='v0'):
     P = {'':'','X':'colz','Y':'colz','C':'colz'}
@@ -3314,76 +3440,160 @@ def printScifi_residuals(tag='v0'):
              XM = (mean[0]+mean[1]+mean[2])/3.
              print("      mean value %8.2F            delta s: %8.2F  %8.2F  %8.2F"%(XM,mean[0]-XM,mean[1]-XM,mean[2]-XM))
 # for H6 beam
-    h['trackSlopes'].GetYaxis().SetRangeUser(-20,20)
-    h['trackSlopes'].GetXaxis().SetRangeUser(-40,0)
+    h6 = False
+    if H6:
+        h['trackSlopes'].GetYaxis().SetRangeUser(-20,20)
+        h['trackSlopes'].GetXaxis().SetRangeUser(-40,0)
     ut.bookCanvas(h,'beamSpot','track slopes',750,750,1,1)
     tc = h['beamSpot'].cd()
     h['trackSlopes'].Draw('colz')
     myPrint(h['beamSpot'],tag+'-beamSpot')
 
+def printScifiAlignment():
+    for s in range(1,6):
+        for o in range(2):
+             p = 10*s+o
+             txt = "        c.Scifi.LocM"+str(p)+"0,c.Scifi.LocM"+str(p)+"1,c.Scifi.LocM"+str(p)+"2 =  "
+             for m in range(3):
+                  x = "Scifi/LocM"+str(s*100+o*10+m)
+                  txt += "%8.2F*u.um,"%(Scifi.GetConfParF(x)/u.um)
+             l = len(txt)
+             print(txt[:l-1])
+    for s in range(1,6):
+        txt = "        c.Scifi.RotPhiS"+str(s)+",c.Scifi.RotPsiS"+str(s)+",c.Scifi.RotThetaS"+str(s)+" = "
+        for a in ["RotPhiS","RotPsiS","RotThetaS"]:
+            x = "Scifi/"+a+str(s)
+            txt += "%8.2F*u.mrad,"%(Scifi.GetConfParF(x)/u.mrad)
+        l = len(txt)
+        print(txt[:l-1])
+
 def minimizeAlignScifi(first=True,level=1,migrad=False):
-    h['chisq'] = []
-    npar = 30
+    eventTree.SetBranchStatus("Cluster_Scifi",0)
+    global trackTask
+    trackTask = SndlhcTracking.Tracking()
+    trackTask.SetName('simpleTracking')
+    trackTask.Init()
+    trackTask.makeScifiClusters = True
+    trackTask.clusScifi   = ROOT.TObjArray(100);
+   
+    npar = 30+15
     vstart  = array('d',[0]*npar)
-    h['Nevents'] = 10000
+    h['Nevents'] = 500000
     if first:
        h['xmin'] =-5000.
        X = Scifi_residuals(Nev=10000,NbinsRes=100,xmin=h['xmin'])
        for m in range(3):
-          vstart[m]     = -X["Scifi/LocD10"]
-          vstart[3+m] = -X["Scifi/LocD11"]
-       errr = 1000.*u.um
+          vstart[m]   = -X["Scifi/LocD10"][0]
+          vstart[3+m] = -X["Scifi/LocD11"][0]
+       err = 1000.
+       h['npar'] = 10
     else:
-# best guess from first round
        if level==1:
-        for m in range(3):
-          vstart[m] = 0.0537
-          vstart[1*3+m] = 0.1190
-          vstart[2*3+m] = 0.0113
-          vstart[3*3+m] = 0.0810
-          vstart[4*3+m] = 0.0022
-          vstart[5*3+m] = -0.1572
-          vstart[6*3+m] = 0.0125
-          vstart[7*3+m] = 0.0326
-          vstart[8*3+m] = 0.0229
-          vstart[9*3+m] = 0.0075
-          err = 25.*u.um
           h['xmin'] =-2000.
-          h['npar'] = 10
+          h['npar'] = 30 + 15
+          h['level'] = 1       # station alignment
+
+          # take relative mat alignment from H6
+          
+          vstart[0] =      0          # s1                                
+          vstart[1] =      0                                            
+          vstart[2] =      0                                            
+          vstart[3] =      0                                            
+          vstart[4] =      -44.7                                           
+          vstart[5] =      0                                               
+          vstart[6] =      0          # s2                                       
+          vstart[7] =      0                                            
+          vstart[8] =      0                                           
+          vstart[9] =      0                                             
+          vstart[10] =     0                                            
+          vstart[11] =     0.                                           
+          vstart[12] =     0.         # s3                                             
+          vstart[13] =     0.                                             
+          vstart[14] =     0.                                             
+          vstart[15] =     0.                                             
+          vstart[16] =     -92.4                                           
+          vstart[17] =     0                                             
+          vstart[18] =     0         # s3                                    
+          vstart[19] =     28.0                                             
+          vstart[20] =     168.9                                             
+          vstart[21] =     0.                                             
+          vstart[22] =     25.5                                            
+          vstart[23] =     -21.0                                            
+          vstart[24] =     0         # s4                                             
+          vstart[25] =     -46.7                                             
+          vstart[26] =     46.9                                           
+          vstart[27] =     0                                            
+          vstart[28] =     523                                           
+          vstart[29] =     169.6                                             
+# rotation, three angles / station                                   
+          vstart[30] =    0.0000    # s1                                    
+          vstart[31] =    0.0                                        
+          vstart[32] =    0.0                                       
+          vstart[33] =    0.0000    # s2                                     
+          vstart[34] =    0.0                                         
+          vstart[35] =    0.0000                                          
+          vstart[36] =    0.0000    # s3                                     
+          vstart[37] =    0.0                                        
+          vstart[38] =    0.0000                                          
+          vstart[39] =    0.0000    # s4                                     
+          vstart[40] =    0.0                                   
+          vstart[41] =    0.0000                                          
+          vstart[42] =    0.0000    # s5                                     
+          vstart[43] =    0.0                                         
+          vstart[44] =    0.0000 
+
+          err = 500.
        if level==2:
-          vstart[0] =  0.0537
-          vstart[1] =  0.0537     
-          vstart[2] =  0.0537     
-          vstart[3] =  0.1190     
-          vstart[4] =  0.1153     
-          vstart[5] =  0.1190     
-          vstart[6] =  0.0113     
-          vstart[7] =  0.0113     
-          vstart[8] =  0.0113     
-          vstart[9] =  0.0810     
-          vstart[10] = 0.0810     
-          vstart[11] = 0.0810     
-          vstart[12] = 0.0022     
-          vstart[13] = 0.0022     
-          vstart[14] = 0.0022     
-          vstart[15] = -0.1572    
-          vstart[16] = -0.1673    
-          vstart[17] = -0.1572    
-          vstart[18] = 0.0097     
-          vstart[19] = 0.0125     
-          vstart[20] = 0.0262     
-          vstart[21] = 0.0333     
-          vstart[22] = 0.0306     
-          vstart[23] = 0.0361     
-          vstart[24] = 0.0229     
-          vstart[25] = 0.0221     
-          vstart[26] = 0.0257     
-          vstart[27] = -0.0112
-          vstart[28] = 0.0405
-          vstart[29] = 0.0099
-          err = 25.*u.um
+          h['level'] = 2       # mat alignment
+          vstart[0] =    2.87296e+02     
+          vstart[1] =    5.11993e+02     
+          vstart[2] =    4.57395e+02     
+          vstart[3] =   -6.38675e+01     
+          vstart[4] =   -3.89699e+01     
+          vstart[5] =    2.75368e+01     
+          vstart[6] =   -1.86759e+02     
+          vstart[7] =    3.26774e+01     
+          vstart[8] =   -5.71174e+01     
+          vstart[9] =    1.99880e+01     
+          vstart[10] =   1.57924e+02     
+          vstart[11] =   1.80187e+02     
+          vstart[12] =  -1.84760e+00     
+          vstart[13] =   7.89774e+01     
+          vstart[14] =   1.39775e+01     
+          vstart[15] =   7.57700e-01     
+          vstart[16] =  -1.09748e+02     
+          vstart[17] =   7.45420e+01     
+          vstart[18] =  -1.67857e+01     
+          vstart[19] =   5.64360e+01     
+          vstart[20] =   9.69426e+01     
+          vstart[21] =   7.10440e+01     
+          vstart[22] =  -6.41257e+01     
+          vstart[23] =   1.72473e+01     
+          vstart[24] =   1.76322e+02     
+          vstart[25] =   1.02006e+02     
+          vstart[26] =   8.16677e+01     
+          vstart[27] =  -1.62196e+02     
+          vstart[28] =   1.84062e+02     
+          vstart[29] =   5.80966e+01     
+# rotation, three angles / station
+          vstart[30] =0.00000e+00     # s0
+          vstart[31] = -9.300e-01   
+          vstart[32] =  0.00000e+00 
+          vstart[33] =0.00000e+00     # s1
+          vstart[34] =-1.900e-01   
+          vstart[35] =  0.00000e+00 
+          vstart[36] =0.00000e+00     # s2
+          vstart[37] =0.00000e+00   
+          vstart[38] =  0.00000e+00 
+          vstart[39] =0.00000e+00     # s3
+          vstart[40] =0.00000e+00   
+          vstart[41] =  0.00000e+00 
+          vstart[42] =0.00000e+00     # s4
+          vstart[43] =-2.200e-01   
+          vstart[44] =  0.00000e+00           
+          err = 20.
           h['xmin'] =-2000.
-          h['npar'] = 30
+          h['npar'] = 45
        if level==3:
           h['Nevents'] = 100000
           p = 0
@@ -3393,7 +3603,7 @@ def minimizeAlignScifi(first=True,level=1,migrad=False):
                   x = "Scifi/LocM"+str(s*100+o*10+m)
                   vstart[p] = Scifi.GetConfParF(x)
                   p+=1
-          err = 25.*u.um
+          err = 25.
           h['xmin'] =-2000.
           h['npar'] = 30
 
@@ -3403,20 +3613,47 @@ def minimizeAlignScifi(first=True,level=1,migrad=False):
     gMinuit.SetErrorDef(1.0)
 
     p=0
+    variables = "n:chi2:"
     for s in range(1,6):
         for o in range(2):
              name = "Scifi/LocM"
              for m in range(3):
-                 if level==1: gMinuit.mnparm(p, name+str(s*10+o), vstart[p], err, 0.,0.,ierflg)
-                 if level==2 or level==3: gMinuit.mnparm(p, name+str(s*100+o*10+m), vstart[p], err, 0.,0.,ierflg)
+                 gMinuit.mnparm(p, name+str(s*100+m*10+o), vstart[p], err, 0.,0.,ierflg)
+                 variables +=name.replace('/','')+":"
                  p+=1
+    for s in range(1,6):    
+        for r in ["RotPhiS","RotPsiS", "RotThetaS"]:   
+            name = "Scifi/"+r+str(s)         
+            gMinuit.mnparm(p, name, vstart[p], err/100, 0.,0.,ierflg)
+            variables +=name.replace('/','')+":"
+            p+=1
     if level == 1:
-        for m in range(3):
-          gMinuit.FixParameter(m)
-          gMinuit.FixParameter(1*3+m)
-          if m!=0: 
-            for s in range(1,10): gMinuit.FixParameter(s*3+m)
-    if level == 2 or level == 3:
+      p=0
+      for s in range(1,6):
+        for o in range(2):
+             for m in range(3):
+                 if s==1 or s==5 : gMinuit.FixParameter(p)
+                 elif m==1 or m==2 : gMinuit.FixParameter(p)
+                 p+=1
+      for s in range(1,6):
+        for a in range(3):
+            gMinuit.FixParameter(p)
+            p+=1
+             
+    if level == 2:
+      p=0
+      for s in range(1,6):
+        for o in range(2):
+             for m in range(3):
+                 if s==3 or s==4 : gMinuit.FixParameter(p)
+                 p+=1
+      for s in range(1,6):
+        for a in range(3):
+            if a==0 or a==2 or s==3 : gMinuit.FixParameter(p)
+            p+=1
+
+    h['evol']  = ROOT.TNtuple("nt","evolution",variables[0:len(variables)-2]) 
+    if level == 3:
 # station 1 H
        gMinuit.FixParameter(0)
        gMinuit.FixParameter(1)
@@ -3464,39 +3701,62 @@ def minimizeAlignScifi(first=True,level=1,migrad=False):
     gMinuit.mnexcm("SIMPLEX",vstart,npar,ierflg)
     if migrad: gMinuit.mnexcm("MIGRAD",vstart,npar,ierflg)
 
-    h['gChisq']=ROOT.TGraph()
-    for n in range(len(h['chisq'])):
-           h['gChisq'].SetPoint(n,n,h['chisq'][n])
     p = 'C2'
     ut.bookCanvas(h,p,p,750,750,1,1)
     tc = h[p].cd()
-    h['gChisq'].Draw("ALP")
+    h['evol'].Draw("chi2:n",'','*')
 
 def FCN(npar, gin, f, par, iflag):
 #calculate chisquare
    h['iter']+=1
    chisq  = 0
-   alignPar = {}
+   h['alignPar'] = {}
+   theArray = [h['iter'],0]
    for p in range(h['npar']):
        if h['npar']  == 10:
           s = p//2+1
           o = p%2
           name = "Scifi/LocD"+str(s*10+o)
-       if h['npar'] == 30:
-          s =  p//6+1
-          o = (p%6)//3
-          m = p%3
-          name = "Scifi/LocM"+str(s*100+o*10+m)
-       alignPar[name]  = par[p]
-       print('minuit %s %6.4F'%(name,par[p]))
-   X = Scifi_residuals(Nev=h['Nevents'],NbinsRes=100,xmin=h['xmin'],alignPar=alignPar)
-   for name in X:
-       chisq += abs(X[name])
+       if h['npar'] > 29: 
+         if p<30:
+           s =  p//6+1
+           o = (p%6)//3
+           m = p%3
+           name = "Scifi/LocM"+str(s*100+o*10+m)
+         else:
+           s = (p-30)//3 + 1
+           if p%3 == 0: name = "Scifi/RotPhiS"+str(s)
+           if p%3 == 1: name = "Scifi/RotPsiS"+str(s)
+           if p%3 == 2: name = "Scifi/RotThetaS"+str(s)
+       h['alignPar'][name]  = par[p]
+       print('minuit %s %6.4F'%(name,par[p]))           
+       if h['level']==1 and p<30: # station alignment    
+         if m>0: h['alignPar'][name]  = par[p-m]
+       else:  
+         h['alignPar'][name]  = par[p]
+       theArray.append(par[p])
+       
+   X = Scifi_residuals(Nev=h['Nevents'],NbinsRes=100,xmin=h['xmin'],alignPar=h['alignPar'],nproc=10)
+   projs = {1:'V',0:'H'}
+   for s in range(1,6):
+    sigma = 15
+    if s==1 or s==5: sigma = 35
+    for o in range(2):
+     for p in projs:
+       proj = projs[p]
+       for x in ['X','Y']:
+           print('res'+x+proj+'_Scifi'+str(s*10+o))
+           hist =  h['res'+x+proj+'_Scifi'+str(s*10+o)]
+           nbins = hist.GetNbinsY()
+           for k in range(1,nbins+1):
+             tmp = hist.ProjectionX('tmp',k,k)
+             chisq += (tmp.GetMean()/sigma)**2
    print('chisq=',chisq,iflag,h['iter'])
-   f.value = int(chisq)
-   h['chisq'].append(chisq)
+   f.value = chisq
+   theArray[1]=chisq
+   theTuple = array('f',theArray)
+   h['evol'].Fill(theTuple)
    return
-
 def plotsForCollabMeeting():
    drawArea(s=3,p=0,opt='',color=ROOT.kGreen)
    h['track_DS30'].Draw('colzsame')

@@ -1,5 +1,8 @@
+
 #!/usr/bin/env python
 import ROOT,os,sys,subprocess,atexit,time
+from XRootD import client
+from XRootD.client.flags import DirListFlags, OpenFlags, MkDirFlags, QueryCode
 import Monitor
 import Scifi_monitoring
 import Mufi_monitoring
@@ -24,7 +27,7 @@ parser.add_argument("-M", "--online", dest="online", help="online mode",default=
 parser.add_argument("--batch", dest="batch", help="batch mode",default=False,action='store_true')
 parser.add_argument("--server", dest="server", help="xrootd server",default=os.environ["EOSSHIP"])
 parser.add_argument("-r", "--runNumber", dest="runNumber", help="run number", type=int,default=-1)
-parser.add_argument("-p", "--path", dest="path", help="run number",required=False,default="")
+parser.add_argument("-p", "--path", dest="path", help="path to data",required=False,default="")
 parser.add_argument("-P", "--partition", dest="partition", help="partition of data", type=int,required=False,default=-1)
 parser.add_argument("-d", "--Debug", dest="debug", help="debug", default=False)
 parser.add_argument("-cpp", "--convRawCPP", action='store_true', dest="FairTask_convRaw", help="convert raw data using ConvRawData FairTask", default=False)
@@ -41,6 +44,8 @@ parser.add_argument("-t", "--trackType", dest="trackType", help="DS or Scifi", d
 parser.add_argument("--ScifiNbinsRes", dest="ScifiNbinsRes", default=100)
 parser.add_argument("--Scifixmin", dest="Scifixmin", default=-2000.)
 parser.add_argument("--ScifialignPar", dest="ScifialignPar", default=False)
+parser.add_argument("--ScifiResUnbiased", dest="ScifiResUnbiased", default=False)
+parser.add_argument("--Mufixmin", dest="Mufixmin", default=-10.)
 
 parser.add_argument("--goodEvents", dest="goodEvents", action='store_true',default=False)
 parser.add_argument("--withTrack", dest="withTrack", action='store_true',default=False)
@@ -48,49 +53,68 @@ parser.add_argument("--nTracks", dest="nTracks",default=0,type=int)
 parser.add_argument("--save", dest="save", action='store_true',default=False)
 parser.add_argument("--interactive", dest="interactive", action='store_true',default=False)
 
-options = parser.parse_args()
+parser.add_argument("--postScale", dest="postScale",help="post scale events, 1..10..100", default=-1,type=int)
 
-options.dashboard = "currently_processed_file.txt"
-if options.auto or options.batch: ROOT.gROOT.SetBatch(True)
+options = parser.parse_args()
+options.slowStream = True
+options.startTime = ""
+options.dashboard = "/mnt/raid1/data_online/currently_processed_file.txt"
+options.monitorTag = ''
+if (options.auto and not options.interactive) or options.batch: ROOT.gROOT.SetBatch(True)
 
 def currentRun():
       with client.File() as f:
-            f.open(options.server+options.path+options.dashboard)
+            f.open(options.server+options.dashboard)
             status, L = f.read()
             Lcrun = L.decode().split('\n')
             f.close()
+      curRun,curPart,start ="","",""
       for l in Lcrun:
             if not l.find('FINISHED')<0:
                print("DAQ not running. Don't know which file to open.")
                print(Lcrun)
-               curRun,curPart,start ="","",""
                break
             if not l.find('.root') < 0:
                  tmp = l.split('/')
                  curRun = tmp[len(tmp)-2]
                  curPart = tmp[len(tmp)-1]
                  start = Lcrun[1]
+                 options.monitorTag = ''
+                 if len(Lcrun)>3: options.monitorTag = 'monitoring_'
                  break
       return curRun,curPart,start
 
 if options.auto:
    options.online = True
-   from XRootD import client
-   from XRootD.client.flags import DirListFlags, OpenFlags, MkDirFlags, QueryCode
 # search for current run
    if options.runNumber < 0:
         curRun = ""
         while curRun.find('run') < 0:
                curRun,curPart,options.startTime =  currentRun()
                if curRun.find('run') < 0:
-                   print("sleep 300sec.",time.ctime())
-                   time.sleep(300)
+                   print("no run info, sleep 30sec.",time.ctime())
+                   time.sleep(30)
         options.runNumber = int(curRun.split('_')[1])
-        options.partition = int(curPart.split('_')[1].split('.')[0])
+        lastRun = curRun
+        if options.slowStream:   options.partition = 0   #   monitoring file set to data_0000.root   int(curPart.split('_')[1].split('.')[0])
+        else:                             options.partition = int(curPart.split('_')[1].split('.')[0])
 else:
    if options.runNumber < 0:
        print("run number required for non-auto mode")
        os._exit(1)
+# works only for runs on EOS
+   if not options.server.find('eos')<0:
+      runDir = "/eos/experiment/sndlhc/raw_data/commissioning/TI18/data/run_"+str(options.runNumber).zfill(6)
+      jname = "run_timestamps.json"
+      dirlist  = str( subprocess.check_output("xrdfs "+os.environ['EOSSHIP']+" ls "+runDir,shell=True) ) 
+      if jname in dirlist:
+         with client.File() as f:          
+            f.open(options.server+runDir+"/run_timestamps.json")
+            status, jsonStr = f.read()
+         exec("date = "+jsonStr.decode())
+         options.startTime = date['start_time'].replace('Z','')
+         if 'stop_time' in date:
+             options.startTime += " - "+ date['stop_time'].replace('Z','')
 
 # prepare tasks:
 FairTasks = []
@@ -106,9 +130,8 @@ else:
    FairTasks.append(trackTask)
 
 M = Monitor.Monitoring(options,FairTasks)
-if options.nEvents < 0 : 
-    if options.online: options.nEvents = M.converter.fiN.event.GetEntries()
-    else:    options.nEvents = M.eventTree.GetEntries()
+if options.nEvents < 0 :   options.nEvents = M.GetEntries()
+if options.postScale==0 and options.nEvents>5E6: options.postScale = 10
 
 monitorTasks = {}
 if not options.fname:
@@ -125,7 +148,13 @@ for m in monitorTasks:
 
 if not options.auto:   # default online/offline mode
    for n in range(options.nStart,options.nStart+options.nEvents):
+     if options.postScale>1:
+        if ROOT.gRandom.Rndm()>1./options.postScale: continue
      event = M.GetEvent(n)
+     if not options.online:
+        if n%options.heartBeat == 0:
+            print("--> run/event nr: %i %i %5.2F%%"%(M.eventTree.EventHeader.GetRunId(),n,n/options.nEvents*100))
+# assume for the moment file does not contain fitted tracks
      for m in monitorTasks:
         monitorTasks[m].ExecuteEvent(M.eventTree)
 
@@ -133,6 +162,10 @@ if not options.auto:   # default online/offline mode
        for m in monitorTasks:
           monitorTasks[m].Plot()
    M.publishRootFile()
+   if options.sudo:
+       print(options.runNumber,options.startTime)
+       options.startTime += " #events="+str(options.nEvents)
+       M.updateHtml()
 else: 
    """ auto mode
        check for open data file on the online machine
@@ -143,13 +176,16 @@ else:
          if new file, finish run, publish histograms, and restart with new file
    """
    N0 = 0
-   lastFile = M.converter.fiN.GetName()
-   tmp = lastFile.split('/')
-   lastRun  = tmp[len(tmp)-2]
-   lastPart = tmp[len(tmp)-1]
+   if options.slowStream: lastPart = 0   #   reading from second low speed DAQ stream    tmp[len(tmp)-1]
    nLast = options.nEvents
    nStart = nLast-options.Nlast
-   M.updateHtml()
+   if not options.interactive and options.sudo: M.updateHtml()
+   lastFile = M.converter.fiN.GetName()
+   if not options.slowStream:
+     tmp = lastFile.split('/')
+     lastRun  = tmp[len(tmp)-2].replace('monitoring_','')
+     lastPart = tmp[len(tmp)-1]
+
    M.updateSource(lastFile)
    while 1>0:
       for n in range(nStart,nLast):
@@ -165,7 +201,7 @@ else:
            if options.sudo: M.publishRootFile()
 
       M.updateSource(lastFile)
-      newEntries = M.converter.fiN.event.GetEntries()
+      newEntries = M.GetEntries()
       if newEntries>nLast:
          nStart = max(nLast,newEntries-options.Nlast)
          nLast = newEntries
@@ -175,21 +211,19 @@ else:
          while curRun.find('run') < 0:
                curRun,curPart,options.startTime  =  currentRun()
                if curRun.find('run') < 0:  
-                   print("sleep 300sec.",time.ctime())
+                   print("sleep 300sec.",curRun,time.ctime())
                    time.sleep(300)
          if not curRun == lastRun:
             for m in monitorTasks:
-               monitorTasks[m].Plot()
+               if not options.interactive:  monitorTasks[m].Plot()
             print("run ",lastRun," has finished.")
             quit()  # reinitialize everything with new run number
-         if not curPart == lastPart:
+         if not curPart == lastPart and not options.slowStream:
             lastPart = curPart
-            lastFile = options.server+options.path+lastRun+"/"+ lastPart
+            lastFile = options.server+options.path+options.monitorTag+lastRun+"/"+ lastPart
             M.converter.fiN = ROOT.TFile.Open(lastFile)
          else:
-            time.sleep(30) # sleep 30 seconds and check for new events
-            print('DAQ inactive for 30sec. Last event = ',M.converter.fiN.event.GetEntries(), curRun,curPart,N0)
+            time.sleep(10) # sleep 10 seconds and check for new events
+            print('DAQ inactive for 10sec. Last event = ',M.GetEntries(), curRun,curPart,N0)
             nStart = nLast
-
-
 

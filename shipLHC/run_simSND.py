@@ -320,6 +320,29 @@ run.CreateGeometryFile(geoFile)
 import saveBasicParameters
 saveBasicParameters.execute(geoFile,snd_geo)
 
+# ------------------------------------------------------------------------
+# If using GENIE option 4 (geometry driver) copy GST TTree to the 
+# output file. This will make it easy to access the FLUKA variables for
+# each neutrino event.
+if options.genie == 4 :
+
+    f_input = ROOT.TFile(inputFile)
+    gst = f_input.gst
+
+    selection_string = "(Entry$ >= "+str(options.firstEvent)+")"
+    if (options.firstEvent + options.nEvents) < gst.GetEntries() :
+        selection_string += "&&(Entry$ < "+str(options.firstEvent + options.nEvents)+")"
+    
+    # Reopen output file
+    f_output = ROOT.TFile(outFile, "UPDATE")
+
+    # Copy only the events used in this run
+    gst_copy = gst.CopyTree(selection_string)
+    gst_copy.Write()
+
+    f_input.Close()
+    f_output.Close()
+
 # -----Finish-------------------------------------------------------
 timer.Stop()
 rtime = timer.RealTime()
