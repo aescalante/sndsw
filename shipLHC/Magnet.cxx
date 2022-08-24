@@ -5,6 +5,7 @@
 //
 
 #include "Magnet.h"
+#include "MagnetPoint.h"
 
 #include "TGeoManager.h"
 #include "TString.h"                    // for TString
@@ -58,7 +59,8 @@ Magnet::Magnet()
   fMom(),
   fTime(-1.),
   fLength(-1.),
-  fELoss(-1)
+  fELoss(-1),
+  fMagnetPointCollection(new TClonesArray("MagnetPoint"))
 {
 }
 
@@ -70,12 +72,17 @@ Magnet::Magnet(const char* name, Bool_t Active,const char* Title)
   fMom(),
   fTime(-1.),
   fLength(-1.),
-  fELoss(-1)
+  fELoss(-1),
+  fMagnetPointCollection(new TClonesArray("MagnetPoint"))
 {
 }
 
 Magnet::~Magnet()
 {
+  if (fMagnetPointCollection) {
+    fMagnetPointCollection->Delete();
+    delete fMagnetPointCollection;
+  }
 }
 
 void Magnet::Initialize()
@@ -194,37 +201,91 @@ void Magnet::ConstructGeometry()
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)
 {
-  //ALB: to be done
+  /** This method is called from the MC stepping */
+  //Set parameters at entrance of volume. Reset ELoss.
+  if ( gMC->IsTrackEntering() ) {
+    fELoss  = 0.;
+    fTime   = gMC->TrackTime() * 1.0e09;
+    fLength = gMC->TrackLength();
+    gMC->TrackPosition(fPos);
+    gMC->TrackMomentum(fMom);
+  }
+  // Sum energy loss for all steps in the active volume
+  fELoss += gMC->Edep();
+
+  // Create vetoPoint at exit of active volume
+  if (  gMC->IsTrackExiting()    ||
+        gMC->IsTrackStop()       ||
+        gMC->IsTrackDisappeared()   ) {
+    if (fELoss == 0. ) {return kFALSE; }
+
+    fTrackID  = gMC->GetStack()->GetCurrentTrackNumber();
+
+    TParticle* p=gMC->GetStack()->GetCurrentTrack();
+    Int_t pdgCode = p->GetPdgCode();
+    TLorentzVector Pos;
+    gMC->TrackPosition(Pos);
+    TLorentzVector Mom;
+    gMC->TrackMomentum(Mom);
+    Int_t detID = 0;
+    gMC->CurrentVolID(detID);
+    const char *name;
+    name = gMC->CurrentVolName();
+    // Check which volume is actually hit and what detID is given
+    LOG(DEBUG)<< "MagnetPoint DetID " << detID << " Hit volume name " << name;
+    fVolumeID = detID;
+    Double_t xmean = (fPos.X()+Pos.X())/2. ;
+    Double_t ymean = (fPos.Y()+Pos.Y())/2. ;
+    Double_t zmean = (fPos.Z()+Pos.Z())/2. ;
+    AddHit(fTrackID, detID,  TVector3(xmean, ymean,  zmean),
+	   TVector3(fMom.Px(), fMom.Py(), fMom.Pz()), fTime, fLength,
+	   fELoss, pdgCode);
+
+    // Increment number of det points in TParticle
+    ShipStack* stack = (ShipStack*) gMC->GetStack();
+    stack->AddPoint(kMagnet);
+  }
+ 
+ return kTRUE;
 }
 
 void Magnet::EndOfEvent()
 {
-  //ALB: to be done
+  fMagnetPointCollection->Clear();
 }
 
 void Magnet::Register()
 {
-  //ALB: to be done
+  /** This will create a branch in the output tree called
+     MagnetPoint, setting the last parameter to kFALSE means:
+     this collection will not be written to the file, it will exist
+     only during the simulation.
+  */
+
+  FairRootManager::Instance()->Register("MagnetPoint", "Magnet",
+					fMagnetPointCollection, kTRUE);
 }
 
 TClonesArray* Magnet::GetCollection(Int_t iColl) const
 {
-  //ALB: to be done
+  if (iColl == 0) { return fMagnetPointCollection; }
+  else { return NULL; }
 }
 
 void Magnet::Reset()
 {
-  //ALB: to be done
+  fMagnetPointCollection->Clear();
 }
 
-void Magnet::GetLocalPosition(Int_t fDetectorID, TVector3& vLeft, TVector3& vRight)
+MagnetPoint* Magnet::AddHit(Int_t trackID, Int_t detID,
+			    TVector3 pos, TVector3 mom,
+			    Double_t time, Double_t length,
+			    Double_t eLoss, Int_t pdgCode)
 {
-  //ALB: to be done
-}
-
-void Magnet::GetPosition(Int_t fDetectorID, TVector3& vLeft, TVector3& vRight)
-{
-  //ALB: to be done
+  TClonesArray& clref = *fMagnetPointCollection;
+  Int_t size = clref.GetEntriesFast();
+  return new(clref[size]) MagnetPoint(trackID, detID, pos, mom,
+				      time, length, eLoss, pdgCode);
 }
 
 ClassImp(Magnet)
