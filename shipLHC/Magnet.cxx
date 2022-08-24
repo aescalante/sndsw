@@ -51,7 +51,7 @@ using std::string;
 using namespace ShipUnit;
 
 Magnet::Magnet()
-: FairDetector("Magnet", "",kTRUE),
+: FairDetector("Magnet", "", kMagnet),
   fTrackID(-1),
   fVolumeID(-1),
   fPos(),
@@ -63,7 +63,7 @@ Magnet::Magnet()
 }
 
 Magnet::Magnet(const char* name, Bool_t Active,const char* Title)
-: FairDetector(name, true, kTRUE),
+: FairDetector(name, true, kMagnet),
   fTrackID(-1),
   fVolumeID(-1),
   fPos(),
