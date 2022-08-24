@@ -19,6 +19,7 @@
 
 class MagnetPoint;
 class FairVolume;
+class TClonesArray;
 
 class Magnet : public FairDetector
 {
@@ -78,7 +79,7 @@ class Magnet : public FairDetector
 		Magnet(const Magnet&);
 		Magnet& operator=(const Magnet&);
 
-		ClassDef(Magnet,6) //IDs, ClassDef(Scifi,3), ClassDef(EmulsionDet,5), ClassDef(MuFilter,4), ClassDef(Floor,2)
+		ClassDef(Magnet,1) //IDs, ClassDef(Scifi,3), ClassDef(EmulsionDet,5), ClassDef(MuFilter,4), ClassDef(Floor,2)
 
 	private:
 

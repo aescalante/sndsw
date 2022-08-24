@@ -52,7 +52,7 @@ using std::string;
 using namespace ShipUnit;
 
 Magnet::Magnet()
-: FairDetector("Magnet", "", kMagnet),
+: FairDetector("Magnet", "", kTRUE),
   fTrackID(-1),
   fVolumeID(-1),
   fPos(),
