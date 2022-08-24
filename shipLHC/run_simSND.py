@@ -104,7 +104,7 @@ ROOT.gRandom.SetSeed(options.theSeed)  # this should be propagated via ROOT to P
 shipRoot_conf.configure(0)     # load basic libraries, prepare atexit for python
 
 if options.testbeam:  snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/sndLHC_H6geom_config.py")
-else if options.AdvSND:
+elif options.AdvSND:
     snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/AdvSND_geom_config.py")
 else:                         snd_geo = ConfigRegistry.loadpy("$SNDSW_ROOT/geometry/sndLHC_geom_config.py")
 

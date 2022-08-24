@@ -45,10 +45,8 @@ class MagnetPoint : public FairMCPoint
     Int_t fPdgCode;
     
     /** Copy constructor **/
-    
     MagnetPoint(const MagnetPoint& point);
     MagnetPoint operator=(const MagnetPoint& point);
-
     ClassDef(MagnetPoint,1) // to be checked!
     /* From Antonio 1 means the version of the class, somehow */
 
