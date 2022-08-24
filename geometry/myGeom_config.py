@@ -311,7 +311,7 @@ with ConfigRegistry.register_config("basic") as c:
         c.Magnet.InMagY   =  60 * u.cm
         c.Magnet.IronYokeX = 30 * u.cm
         c.Magnet.IronYokeY = 25 * u.cm
-        c.Magnet.CoilX = c.Magnet.InMagY
+        c.Magnet.CoilX = c.Magnet.InMagX
         c.Magnet.CoilY = 23 * u.cm
         c.Magnet.OutMagX = c.Magnet.InMagX + 2*c.Magnet.IronYokeX
         c.Magnet.OutMagY = c.Magnet.InMagX + 2*(c.Magnet.CoilY+c.Magnet.IronYokeY)
