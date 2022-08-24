@@ -141,6 +141,12 @@ with ConfigRegistry.register_config("basic") as c:
         c.Scifi.LocM410,c.Scifi.LocM411,c.Scifi.LocM412=   0.0*u.um,     0.0*u.um,          0.0*u.um
         c.Scifi.LocM500,c.Scifi.LocM501,c.Scifi.LocM502=   0.0*u.um,     0.0*u.um,          0.0*u.um
         c.Scifi.LocM510,c.Scifi.LocM511,c.Scifi.LocM512=   0.0*u.um,     0.0*u.um,          0.0*u.um
+# station rotations
+        c.Scifi.RotPhiS1,c.Scifi.RotPsiS1,c.Scifi.RotThetaS1 = 0,0,0
+        c.Scifi.RotPhiS2,c.Scifi.RotPsiS2,c.Scifi.RotThetaS2 = 0,0,0
+        c.Scifi.RotPhiS3,c.Scifi.RotPsiS3,c.Scifi.RotThetaS3 = 0,0,0
+        c.Scifi.RotPhiS4,c.Scifi.RotPsiS4,c.Scifi.RotThetaS4 = 0,0,0
+        c.Scifi.RotPhiS5,c.Scifi.RotPsiS5,c.Scifi.RotThetaS5 = 0,0,0
 
 # Time alignment Scifi, T0 = station 0,  mat 0 
         c.Scifi.signalSpeed = 15 * u.cm/u.ns
@@ -253,6 +259,22 @@ with ConfigRegistry.register_config("basic") as c:
         c.MuFilter.VETOBoxY1        = c.MuFilter.VETOLocY - c.MuFilter.VetoBarZ/2 - c.MuFilter.SupportBoxD
         c.MuFilter.VETOBoxY2        = c.MuFilter.VETOLocY + c.MuFilter.VetoBarZ/2 + c.MuFilter.SupportBoxD
 
+       # VETO/US/DS plane alignment
+        c.MuFilter.Veto1ShiftY = 0 * u.cm
+        c.MuFilter.Veto2ShiftY = 0 * u.cm
+        c.MuFilter.US1ShiftY =   0 * u.cm
+        c.MuFilter.US2ShiftY =   0 * u.cm
+        c.MuFilter.US3ShiftY =   0 * u.cm
+        c.MuFilter.US4ShiftY =   0 * u.cm
+        c.MuFilter.US5ShiftY =   0 * u.cm
+        c.MuFilter.DS1ShiftY =   0 * u.cm
+        c.MuFilter.DS1ShiftX =   0 * u.cm
+        c.MuFilter.DS2ShiftY =   0 * u.cm
+        c.MuFilter.DS2ShiftX =   0 * u.cm
+        c.MuFilter.DS3ShiftY =   0 * u.cm
+        c.MuFilter.DS3ShiftX =   0 * u.cm
+        c.MuFilter.DS4ShiftX =   0 * u.cm
+
        #digitization parameters
         c.MuFilter.DsAttenuationLength   =  350 * u.cm                #  values between 300 cm and 400cm observed for H6 testbeam
         c.MuFilter.DsTAttenuationLength =  700 * u.cm                # top readout with mirror on bottom
@@ -282,3 +304,27 @@ with ConfigRegistry.register_config("basic") as c:
         c.Floor.MFeBlockX = c.MuFilter.FeX
         c.Floor.MFeBlockY = c.MuFilter.FeY
         c.Floor.MFeBlockZ = c.MuFilter.FeZ
+
+        # MagnetStructure
+        c.Magnet = AttrDict(z=0*u.cm)
+        c.Magnet.InMagX   =  120 * u.cm
+        c.Magnet.InMagY   =  60 * u.cm
+        c.Magnet.IronYokeX = 30 * u.cm
+        c.Magnet.IronYokeY = 25 * u.cm
+        c.Magnet.CoilX = c.Magnet.InMagX
+        c.Magnet.CoilY = 23 * u.cm
+        c.Magnet.OutMagX = c.Magnet.InMagX + 2*c.Magnet.IronYokeX
+        c.Magnet.OutMagY = c.Magnet.InMagX + 2*(c.Magnet.CoilY+c.Magnet.IronYokeY)
+        c.Magnet.MagZ = 200 * u.cm
+        c.Magnet.Mother = 1000 * u.cm
+        c.Magnet.Field = 1 #tesla
+        
+        # Magnet Tracking stations
+        c.Magnet.TrackerZ = 0.5 * u.cm
+        c.Magnet.TSpacingZ = 2 * u.cm
+        c.Magnet.LevArm = 100 * u.cm
+
+        #shift around the magnetd (numbers tuned by hand)
+        c.Magnet.ShiftX = -42 * u.cm
+        c.Magnet.ShiftY = 42 * u.cm
+        c.Magnet.ShiftZ = 780 * u.cm

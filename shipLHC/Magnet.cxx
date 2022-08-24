@@ -70,7 +70,7 @@ Magnet::Magnet()
 }
 
 Magnet::Magnet(const char* name, Bool_t Active,const char* Title)
-: FairDetector(name, true, kTRUE),
+: FairDetector(name, true, kSNDMagnet),
   fTrackID(-1),
   fVolumeID(-1),
   fPos(),
@@ -122,8 +122,8 @@ void Magnet::ConstructGeometry()
     // Geometry implementation from D. Centanni
 
     TGeoVolume *top=gGeoManager->GetTopVolume();
-    TGeoVolume *tunnel = gGeoManager->FindVolumeFast("Tunnel");
-    if(!tunnel)  LOG(ERROR) << "no Tunnel volume found " ;
+    TGeoVolume *detector = gGeoManager->FindVolumeFast("Detector");
+    if(!tunnel)  LOG(ERROR) << "no Detector volume found " ;
 
     // Materials
 
@@ -193,7 +193,7 @@ void Magnet::ConstructGeometry()
     TGeoBBox *TrackPlane = new TGeoBBox("TrackPlane", fInMagX/2., fInMagY/2., fTrackerZ/2.);
 
     // TO BE PROPERLY ADDED
-    TGeoVolume *volTrackPlane = new TGeoVolume("volTrackPlane", TrackPlane, 0);
+    TGeoVolume *volTrackPlane = new TGeoVolume("volTrackPlane", TrackPlane, Cu); // add medium
     volTrackPlane->SetLineColorAlpha(kBlue, 0.4);
     AddSensitiveVolume(volTrackPlane);
 
@@ -202,7 +202,7 @@ void Magnet::ConstructGeometry()
     MagnetVol->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
     MagnetVol->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
 
-    tunnel->AddNode(MagnetVol, 0, 0)
+    detector->AddNode(MagnetVol, 0, 0) // see Alberto implementation
 }
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)
@@ -241,11 +241,15 @@ Bool_t  Magnet::ProcessHits(FairVolume* vol)
     LOG(DEBUG)<< "MagnetPoint DetID " << detID << " Hit volume name " << name;
     fVolumeID = detID;
     Double_t xmean = (fPos.X()+Pos.X())/2. ;
-	  Double_t ymean = (fPos.Y()+Pos.Y())/2. ;
-	  Double_t zmean = (fPos.Z()+Pos.Z())/2. ;
+	Double_t ymean = (fPos.Y()+Pos.Y())/2. ;
+	Double_t zmean = (fPos.Z()+Pos.Z())/2. ;
     AddHit(fTrackID, detID,  TVector3(xmean, ymean,  zmean),
 			TVector3(fMom.Px(), fMom.Py(), fMom.Pz()), fTime, fLength,
 			fELoss, pdgCode);
+
+    // Increment number of det points in TParticle
+		ShipStack* stack = (ShipStack*) gMC->GetStack();
+		stack->AddPoint(kSNDMagnet);
     }
 
     return kTRUE;
