@@ -155,6 +155,11 @@ void Magnet::ConstructGeometry()
     Double_t fTSpacingZ = conf_floats["Magnet/TSpacingZ"];
     Double_t fLevArm = conf_floats["Magnet/LevArm"]
 
+	// Shifts
+  	Double_t fShiftX     = conf_floats["Magnet/ShiftX"];
+  	Double_t fShiftY     = conf_floats["Magnet/ShiftY"];
+  	Double_t fShiftZ     = conf_floats["Magnet/ShiftZ"];
+
     // Magnetic Field
     TGeoUniformMagField *magField = new TGeoUniformMagField(-fField,0, 0);
 
@@ -202,7 +207,7 @@ void Magnet::ConstructGeometry()
     MagnetVol->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
     MagnetVol->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
 
-    detector->AddNode(MagnetVol, 0, 0) // see Alberto implementation
+    detector->AddNode(MagnetVol, 0, new TGeoTranslation(fShiftX,fShiftY,fShiftZ)) // see Alberto implementation
 }
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)
