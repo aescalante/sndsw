@@ -6,6 +6,7 @@
 //
 
 #include "Magnet.h"
+#include "MagnetPoint.h"
 
 #include "TGeoManager.h"
 #include "FairRun.h"                    // for FairRun
@@ -24,6 +25,10 @@
 #include "TGeoMedium.h"
 #include "TGeoTrd1.h"
 #include "TGeoArb8.h"
+#include "TParticle.h"
+
+#include "TClonesArray.h"
+#include "TVirtualMC.h"
 
 #include "FairVolume.h"
 #include "FairGeoVolume.h"
@@ -64,7 +69,7 @@ Magnet::Magnet()
   fMom(),
   fTime(-1.),
   fLength(-1.),
-  fELoss(-1)
+  fELoss(-1),
   fMagnetPointCollection(new TClonesArray("MagnetPoint"))
 {
 }
@@ -77,7 +82,7 @@ Magnet::Magnet(const char* name, Bool_t Active,const char* Title)
   fMom(),
   fTime(-1.),
   fLength(-1.),
-  fELoss(-1)
+  fELoss(-1),
   fMagnetPointCollection(new TClonesArray("MagnetPoint"))
 {
 }
@@ -123,7 +128,7 @@ void Magnet::ConstructGeometry()
 
     TGeoVolume *top=gGeoManager->GetTopVolume();
     TGeoVolume *detector = gGeoManager->FindVolumeFast("Detector");
-    if(!tunnel)  LOG(ERROR) << "no Detector volume found " ;
+    if(!detector)  LOG(ERROR) << "no Detector volume found " ;
 
     // Materials
 
@@ -153,7 +158,7 @@ void Magnet::ConstructGeometry()
     // TRACKING STATIONS STRUCTURE
     Double_t fTrackerZ = conf_floats["Magnet/TrackerZ"];
     Double_t fTSpacingZ = conf_floats["Magnet/TSpacingZ"];
-    Double_t fLevArm = conf_floats["Magnet/LevArm"]
+    Double_t fLevArm = conf_floats["Magnet/LevArm"];
 
 	// Shifts
   	Double_t fShiftX     = conf_floats["Magnet/ShiftX"];
@@ -207,7 +212,7 @@ void Magnet::ConstructGeometry()
     MagnetVol->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
     MagnetVol->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
 
-    detector->AddNode(MagnetVol, 0, new TGeoTranslation(fShiftX,fShiftY,fShiftZ)) // see Alberto implementation
+    detector->AddNode(MagnetVol, 0, new TGeoTranslation(fShiftX,fShiftY,fShiftZ)); // see Alberto implementation
 }
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)

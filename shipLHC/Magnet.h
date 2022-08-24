@@ -63,8 +63,23 @@ public:
                     TVector3 pos, TVector3 mom,
                     Double_t time, Double_t length,
                     Double_t eLoss, Int_t pdgCode);
+    
+    /** The following methods can be implemented if you need to make
+     *  any optional action in your detector during the transport.
+     */
+    
+    virtual void   CopyClones( TClonesArray* cl1,  TClonesArray* cl2 ,
+                              Int_t offset) {;}
+    virtual void   SetSpecialPhysicsCuts() {;}
+    virtual void   EndOfEvent();
+    virtual void   FinishPrimary() {;}
+    virtual void   FinishRun() {;}
+    virtual void   BeginPrimary() {;}
+    virtual void   PostTrack() {;}
+    virtual void   PreTrack() {;}
+    virtual void   BeginEvent() {;}
 
-    Magnet(const Scifi&);
+    Magnet(const Magnet&);
     Magnet& operator=(const Magnet&);
 
 private:
