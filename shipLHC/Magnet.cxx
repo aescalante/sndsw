@@ -141,7 +141,8 @@ void Magnet::ConstructGeometry()
   Double_t fShiftY     = conf_floats["Magnet/ShiftY"];
   Double_t fShiftZ     = conf_floats["Magnet/ShiftZ"];
   
-  TGeoVolume *top=gGeoManager->FindVolumeFast("Detector");
+  TGeoVolume *top=gGeoManager->GetTopVolume(); // is this needed?
+  TGeoVolume *detector=gGeoManager->FindVolumeFast("Detector");
   if(!top)  LOG(ERROR) << "no Detector volume found " ;
 
   //Definition of the box containing volFeYoke + volCoil + volMagRegion + volTrackPlanes
@@ -185,6 +186,7 @@ void Magnet::ConstructGeometry()
   TGeoVolume *volTrackPlane = new TGeoVolume("volTrackPlane", TrackPlane, Cu); //placeholder material
   volTrackPlane->SetLineColor(kBlue);
   volTrackPlane->SetTransparency(60);
+  AddSensitiveVolume(volTrackPlane);
 
   volMagnet->AddNode(volTrackPlane, 0, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ/2.));
   volMagnet->AddNode(volTrackPlane, 1, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ/2.));
@@ -196,7 +198,7 @@ void Magnet::ConstructGeometry()
   volMagRegion->SetField(magField);
   volMagnet->AddNode(volMagRegion, 0);
   
-  top->AddNode(volMagnet, 0, new TGeoTranslation(fShiftX,fShiftY,fShiftZ));
+  detector->AddNode(volMagnet, 0, new TGeoTranslation(fShiftX,fShiftY,fShiftZ));
 }
 
 Bool_t  Magnet::ProcessHits(FairVolume* vol)
