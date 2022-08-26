@@ -188,9 +188,9 @@ void Magnet::ConstructGeometry()
   volTrackPlane->SetTransparency(60);
   AddSensitiveVolume(volTrackPlane);
 
-  volMagnet->AddNode(volTrackPlane, 0, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ/2.));
-  volMagnet->AddNode(volTrackPlane, 1, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ/2.));
-  volMagnet->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 0, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ-fLevArm-fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 1, new TGeoTranslation(0, 0, -fMagZ/2.-fTSpacingZ-fTrackerZ/2.));
+  volMagnet->AddNode(volTrackPlane, 2, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ/2.));
   volMagnet->AddNode(volTrackPlane, 3, new TGeoTranslation(0, 0, +fMagZ/2.+fTSpacingZ+fTrackerZ+fLevArm+fTrackerZ/2.));
 
   TGeoUniformMagField *magField = new TGeoUniformMagField(-fField,0, 0);
